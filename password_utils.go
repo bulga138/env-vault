@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
 	"regexp"
 	"syscall"
 
@@ -75,4 +77,53 @@ func promptForNewPassword() ([]byte, error) {
 
 	fmt.Println("✅ Contraseña aceptada.")
 	return password, nil
+}
+
+// func getMasterPasswordFromBitwarden() ([]byte, error) {
+//     // The ID of the secret you stored in Bitwarden Secrets Manager.
+//     // This could also come from a config file.
+//     secretID := "d39fb552-13da-4fc8-9dbf-b36401088e73"
+
+//     // Check if the BWS_ACCESS_TOKEN is set.
+//     if os.Getenv("BWS_ACCESS_TOKEN") == "" {
+//         return nil, fmt.Errorf("Bitwarden Secrets Manager token not found. Please set the BWS_ACCESS_TOKEN environment variable")
+//     }
+
+//     // Execute the 'bws' command.
+//     cmd := exec.Command("bws", "secret", "get", secretID)
+//     var out bytes.Buffer
+//     var stderr bytes.Buffer
+//     cmd.Stdout = &out
+//     cmd.Stderr = &stderr
+
+//     err := cmd.Run()
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to fetch secret from Bitwarden: %s", stderr.String())
+//     }
+
+//     // The CLI output includes extra text and newlines, so we need to clean it.
+//     // Example output: `Password: "the_actual_password"`
+//     // This parsing logic may need adjustment based on the exact output.
+//     // For simplicity, this example assumes the output is just the password.
+//     return bytes.TrimSpace(out.Bytes()), nil
+// }
+
+func saveMasterPasswordToBitwarden(password []byte) error {
+	// The ID of the secret you want to store in Bitwarden Secrets Manager.
+	// This could also come from a config file.
+	secretID := "d39fb552-13da-4fc8-9dbf-b36401088e73"
+
+	// Check if the BWS_ACCESS_TOKEN is set.
+	if os.Getenv("BWS_ACCESS_TOKEN") == "" {
+		return fmt.Errorf("Bitwarden Secrets Manager token not found. Please set the BWS_ACCESS_TOKEN environment variable")
+	}
+	// Execute the 'bws' command to store the secret.
+	cmd := exec.Command("bws", "secret", "set", secretID, string(password))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to save secret to Bitwarden: %s", stderr.String())
+	}
+	return nil
 }
