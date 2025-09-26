@@ -85,10 +85,10 @@ sync-load:
 	@make run ARGS=sync-load
 
 save-bw:
-	@make run ARGS="save --use-bitwarden"
+	@make run ARGS="--use-bitwarden save"
 
 get-bw:
-	@make run ARGS="get --use-bitwarden"
+	@make run ARGS="--use-bitwarden get"
 
 # Declara los targets que no corresponden a archivos para evitar conflictos
 .PHONY: all clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw

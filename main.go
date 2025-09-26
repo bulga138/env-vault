@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	useBitwarden = flag.Bool("use-bitwarden", false, "Use Bitwarden to fetch the master password")
+	useBitwarden = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
 )
 
 func main() {
@@ -71,7 +71,6 @@ func handleSave() {
 		return
 	}
 
-	// Comprobamos si ya existe una entrada para decidir qué flujo de contraseña usar
 	vault, err := loadVault()
 	if err != nil {
 		fmt.Printf("Error al cargar el almacén: %v\n", err)
@@ -81,15 +80,20 @@ func handleSave() {
 	var password []byte
 	var passErr error
 	if *useBitwarden {
-		// Fetch from Bitwarden if the flag is set
-		password, passErr = getMasterPasswordFromBitwarden()
+		password, passErr = getMasterPasswordFromSecretsManager(repoName)
 	} else {
 		if _, exists := vault[repoName]; exists {
-			// Si ya existe, solo pedimos la contraseña una vez
 			password, passErr = promptForPassword("Introduce tu contraseña maestra para actualizar: ")
 		} else {
-			// Si es una entrada nueva, usamos el flujo completo de validación
-			password, passErr = promptForNewPassword()
+			fmt.Println("\nNo password found for this repository. Generating a new secure password...")
+			passStr, passErr := generateSecurePassword(16)
+			password = []byte(passStr)
+			if passErr == nil {
+				fmt.Println("\n✅ New master password generated for this repository:")
+				fmt.Printf("\n%s\n\n", string(password))
+				fmt.Println("You will be asked if you want to save this to Bitwarden shortly.")
+				fmt.Println("---------------------------------------------------------------")
+			}
 		}
 	}
 
@@ -107,7 +111,7 @@ func handleSave() {
 	var response string
 	fmt.Scanln(&response)
 	if strings.ToLower(response) == "y" {
-		if err := saveMasterPasswordToBitwarden(password); err != nil {
+		if err := saveMasterPasswordToBitwarden(repoName, password); err != nil {
 			fmt.Printf("Error al guardar la contraseña maestra en Bitwarden: %v\n", err)
 			return
 		}
@@ -118,7 +122,6 @@ func handleSave() {
 	fmt.Printf("✅ ¡Archivo .env para '%s' guardado de forma segura!\n", repoName)
 }
 
-// handleGet se encarga de la lógica para obtener un .env
 func handleGet() {
 	fmt.Println("🔓 Obteniendo el archivo .env...")
 
@@ -132,12 +135,12 @@ func handleGet() {
 	var passErr error
 
 	if *useBitwarden {
-		password, passErr = getMasterPasswordFromBitwarden()
+		password, passErr = getMasterPasswordFromSecretsManager(repoName)
 	} else {
 		password, passErr = promptForPassword("Introduce tu contraseña maestra para descifrar: ")
 	}
 	if passErr != nil {
-		fmt.Printf("\nError al leer la contraseña: %v\n", err)
+		fmt.Printf("\nError al leer la contraseña: %v\n", passErr)
 		return
 	}
 
@@ -148,7 +151,6 @@ func handleGet() {
 	}
 	dirName := strings.ReplaceAll(repoName, "/", "-")
 
-	// Create the directory if it doesn't exist.
 	if err := os.MkdirAll(dirName, 0755); err != nil {
 		fmt.Printf("Error al crear el directorio '%s': %v\n", dirName, err)
 		return
@@ -165,7 +167,6 @@ func handleGet() {
 }
 
 func handleGeneratePassword() {
-	// You can make the length configurable with a flag later (e.g., --length 24)
 	const passwordLength = 16
 
 	fmt.Printf("🔒 Generating a new %d-character secure password...\n", passwordLength)
@@ -179,12 +180,10 @@ func handleGeneratePassword() {
 	fmt.Println("Copy this password and store it in a safe place (like a password manager).")
 }
 
-// handleSyncSave saves the current repo's secret to Firestore.
 func handleSyncSave() {
 	fmt.Println("☁️  Saving current repo's secret to Firestore...")
 	ctx := context.Background()
 
-	// Initialize Firestore client
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
 		fmt.Printf("Error: Could not connect to Firebase: %v\n", err)
@@ -192,14 +191,12 @@ func handleSyncSave() {
 	}
 	defer client.Close()
 
-	// Get repo name
 	repoName, err := getCurrentRepoName()
 	if err != nil {
 		fmt.Printf("Error getting repo name: %v\n", err)
 		return
 	}
 
-	// Load the local vault to get the secret
 	vault, err := loadVault()
 	if err != nil {
 		fmt.Printf("Error loading local vault: %v\n", err)
@@ -211,7 +208,6 @@ func handleSyncSave() {
 		return
 	}
 
-	// Save to Firebase
 	if err := saveSecretToFirebase(ctx, client, repoName, secret); err != nil {
 		fmt.Printf("Error saving to Firestore: %v\n", err)
 		return
@@ -220,12 +216,10 @@ func handleSyncSave() {
 	fmt.Printf("✅ Secret for '%s' successfully saved to Firestore.\n", repoName)
 }
 
-// handleSyncLoad loads all secrets from Firestore to the local vault.
 func handleSyncLoad() {
 	fmt.Println("☁️  Loading all secrets from Firestore to local vault.json...")
 	ctx := context.Background()
 
-	// Initialize Firestore client
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
 		fmt.Printf("Error: Could not connect to Firebase: %v\n", err)
@@ -239,7 +233,6 @@ func handleSyncLoad() {
 	}
 }
 
-// printHelp muestra un mensaje de ayuda simple
 func printHelp() {
 	fmt.Println("Bienvenido a env-vault 🛡️")
 	fmt.Println("Uso: env-vault <comando>")
@@ -250,4 +243,8 @@ func printHelp() {
 	fmt.Println("  generate-pass   - Genera una nueva contraseña maestra segura.")
 	fmt.Println("  sync-save       - Guarda el secreto del repo actual en Firestore.")
 	fmt.Println("  sync-load       - Carga todos los secretos de Firestore a vault.json.")
+	fmt.Println("\nOpciones:")
+	fmt.Println("  -use-bitwarden  - Usa BitWarden para obtener la contraseña maestra en lugar de pedirla manualmente.")
+	fmt.Println("\nAsegúrate de configurar las variables de entorno necesarias antes de usar la herramienta.")
+	fmt.Println("Para más información, visita: https://github.com/bulga138/env-vault")
 }
