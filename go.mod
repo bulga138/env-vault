@@ -1,4 +1,4 @@
-module env-vault
+module github.com/bulga138/env-vault
 
 go 1.24.0
 
