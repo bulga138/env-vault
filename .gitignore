@@ -1,0 +1,23 @@
+# Archivo del almacén de secretos local
+vault.json
+
+# Archivos de entorno locales (¡nunca deben subirse!)
+.env
+*.env
+.env.*
+
+# Binarios compilados y directorios de build
+build/
+env-vault
+env-vault.exe
+
+# Archivos de log
+*.log
+
+# Archivos de configuración del IDE
+.idea/
+.vscode/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
