@@ -216,17 +216,17 @@ make tidy
 go test ./...
 ```
 
-## Bitwarden Integration (Optional)
+## BitWarden Integration (Optional)
 
-`env-vault` can integrate with your personal Bitwarden vault to securely fetch your master password, so you never have to type it.
+`env-vault` can integrate with your personal BitWarden vault to securely fetch your master password, so you never have to type it.
 
 ### Setup
-1.  **Install the Bitwarden CLI** by following the [official guide](https://bitwarden.com/help/cli/).
+1.  **Install the BitWarden CLI** by following the [official guide](https://bitwarden.com/help/cli/).
 2.  **Log in to your account**:
     ```bash
     bw login
     ```
-3.  **Store your `env-vault` master password** as a new item (e.g., a Password item) in your Bitwarden vault.
+3.  **Store your `env-vault` master password** as a new item (e.g., a Password item) in your BitWarden vault.
 4.  **Find the Item ID** of the item you just created. You can get this from the URL in the web vault or by using the command `bw list items --search "your-item-name"`.
 5.  **Set the environment variable**:
     ```bash
@@ -234,7 +234,7 @@ go test ./...
     ```
 
 ### Usage
-Run any command with the `--use-bitwarden` flag, or use the Makefile shortcuts (`make save-bw`, `make get-bw`). The application will prompt you for your main Bitwarden password to unlock the vault and retrieve the secret.
+Run any command with the `--use-bitwarden` flag, or use the Makefile shortcuts (`make save-bw`, `make get-bw`). The application will prompt you for your main BitWarden password to unlock the vault and retrieve the secret.
 
 ## 🤝 Contributing
 

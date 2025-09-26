@@ -13,13 +13,13 @@ import (
 var oauthConfig *oauth2.Config
 
 func initOAuth(clientID, clientSecret string) {
-    oauthConfig = &oauth2.Config{
-        ClientID:     clientID,
-        ClientSecret: clientSecret,
-        RedirectURL:  "http://localhost:8080/github/callback",
-        Scopes:       []string{"read:user"},
-        Endpoint:     github.Endpoint,
-    }
+	oauthConfig = &oauth2.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  "http://localhost:8080/github/callback",
+		Scopes:       []string{"read:user"},
+		Endpoint:     github.Endpoint,
+	}
 }
 
 func handleLogin() {
@@ -41,13 +41,12 @@ func handleLogin() {
 		}
 
 		if err := saveToken(token.AccessToken); err != nil {
-        fmt.Fprintf(w, "Error crítico: No se pudo guardar el token de acceso de forma segura: %v\n", err)
-		authComplete <- ""
-        return
-    }
+			fmt.Fprintf(w, "Error crítico: No se pudo guardar el token de acceso de forma segura: %v\n", err)
+			authComplete <- ""
+			return
+		}
 
-		// (En una app real, guardarías este token de forma segura)
-		// Por ahora, solo confirmamos que funcionó.
+		// TODO: Save the access token securely (e.g., in the system keychain).
 		fmt.Fprintln(w, "¡Autenticación exitosa! Puedes cerrar esta ventana.")
 		authComplete <- token.AccessToken
 	})
@@ -67,6 +66,6 @@ func handleLogin() {
 	time.Sleep(1 * time.Second)
 }
 
-// TODO: En un sistema real, aquí irían funciones para guardar y cargar
-// el token de acceso de forma segura (p. ej., en el keychain del sistema)
-// y comprobar si el usuario ya está logueado antes de ejecutar `save` o `get`.
+// TODO: Add functions to securely save and load
+// the access token (e.g., in the system keychain)
+// and check if the user is already logged in before executing `save` or `get`.

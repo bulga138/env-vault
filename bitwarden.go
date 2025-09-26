@@ -2,51 +2,80 @@
 package main
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
-	"syscall"
-
-	"github.com/floriaanpost/go-bitwarden-client"
-	"golang.org/x/term"
+	"os/exec"
 )
 
-// getMasterPasswordFromBitwarden fetches the env-vault master password from a personal Bitwarden vault.
-func getMasterPasswordFromBitwarden() ([]byte, error) {
-	fmt.Println("🔑 Your vault is locked. Unlocking with Bitwarden...")
+// BwsSecretValue defines the structure for the 'get' command JSON output.
+type BwsSecretValue struct {
+	Value string `json:"value"`
+}
 
-	// 1. Get the Bitwarden Item ID from an environment variable.
-	itemID := os.Getenv("BITWARDEN_ITEM_ID")
-	if itemID == "" {
-		return nil, fmt.Errorf("BITWARDEN_ITEM_ID environment variable must be set")
+// BwsSecretListItem defines the structure for an item in the 'list' command output.
+type BwsSecretListItem struct {
+	ID  string `json:"id"`
+	Key string `json:"key"`
+}
+
+// getMasterPasswordFromSecretsManager fetches a secret by its key (repo name) within a project.
+func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
+	fmt.Printf("🔑 Looking for secret with key '%s' in BitWarden...\n", repoName)
+
+	// Get Project ID from environment.
+	projectID := os.Getenv("BWS_PROJECT_ID")
+	if projectID == "" {
+		return nil, fmt.Errorf("BWS_PROJECT_ID environment variable must be set")
 	}
 
-	// 2. Prompt the user for their main Bitwarden master password to unlock the vault.
-	fmt.Print("Enter your Bitwarden master password: ")
-	bitwardenPassword, err := term.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read Bitwarden password: %w", err)
-	}
-	fmt.Println()
+	// Step 1: List all secrets in the project to find the ID.
+	listCmd := exec.Command("bws", "secret", "list", "--output", "json", projectID)
+	var listOut, listStderr bytes.Buffer
+	listCmd.Stdout = &listOut
+	listCmd.Stderr = &listStderr
 
-	// 3. Initialize the Bitwarden client.
-	bw := bitwarden.New()
-	defer bw.Close()
-
-	// 4. Unlock the vault for this session.
-	if err := bw.Unlock(context.TODO(), string(bitwardenPassword)); err != nil {
-		return nil, fmt.Errorf("failed unlocking Bitwarden vault: %w", err)
-	}
-	// Lock the vault again when the function finishes.
-	defer bw.Lock(context.TODO())
-
-	// 5. Fetch the stored password item.
-	// You can also use bw.GetSecureNote if you stored it as a note.
-	item, err := bw.GetSecureNote(context.TODO(), itemID)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting item with ID '%s' from Bitwarden: %w", itemID, err)
+	if err := listCmd.Run(); err != nil {
+		return nil, fmt.Errorf("bws CLI failed during 'list': %s", listStderr.String())
 	}
 
-	fmt.Println("✅ Master password successfully fetched from Bitwarden.")
-	return []byte(item), nil
+	var secretList []BwsSecretListItem
+	if err := json.Unmarshal(listOut.Bytes(), &secretList); err != nil {
+		return nil, fmt.Errorf("failed to parse secret list from bws CLI: %w", err)
+	}
+
+	// Step 2: Find our secret's ID in the list.
+	var secretID string
+	for _, secret := range secretList {
+		if secret.Key == repoName {
+			secretID = secret.ID
+			break
+		}
+	}
+
+	if secretID == "" {
+		return nil, fmt.Errorf("secret with key '%s' not found in project '%s'", repoName, projectID)
+	}
+
+	fmt.Println("   Found secret ID:", secretID)
+	fmt.Println("   Fetching secret value...")
+
+	// Step 3: Get the secret's value using its ID.
+	getCmd := exec.Command("bws", "secret", "get", "--output", "json", secretID)
+	var getOut, getStderr bytes.Buffer
+	getCmd.Stdout = &getOut
+	getCmd.Stderr = &getStderr
+
+	if err := getCmd.Run(); err != nil {
+		return nil, fmt.Errorf("bws CLI failed during 'get': %s", getStderr.String())
+	}
+
+	var secretValue BwsSecretValue
+	if err := json.Unmarshal(getOut.Bytes(), &secretValue); err != nil {
+		return nil, fmt.Errorf("failed to parse secret value from bws CLI: %w", err)
+	}
+
+	fmt.Println("✅ Master password successfully fetched and decrypted.")
+	return []byte(secretValue.Value), nil
 }
