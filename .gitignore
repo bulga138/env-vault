@@ -6,6 +6,7 @@ vault.json*
 .env
 *.env
 .env.*
+serviceAccountKey.json
 
 # Binarios compilados y directorios de build
 build/
