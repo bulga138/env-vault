@@ -40,7 +40,6 @@ Set up your GitHub OAuth application credentials:
 ``` bash
 export GITHUB_CLIENT_ID="your_github_client_id"
 export GITHUB_CLIENT_SECRET="your_github_client_secret"
-copy
 ```
 
 ## 🚀 Quick Start
