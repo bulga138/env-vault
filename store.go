@@ -80,6 +80,7 @@ func getEnv(repoName string, password []byte) ([]byte, error) {
 }
 
 func saveVault(vault vaultData) error {
+	vaultFile := getVaultFilePath() // Get the dynamic path
 	// Creamos un bloqueo en un archivo .lock para evitar condiciones de carrera.
 	lock := flock.New(vaultFile + ".lock")
 	locked, err := lock.TryLock()
@@ -100,6 +101,7 @@ func saveVault(vault vaultData) error {
 
 // loadVault lee el archivo JSON y lo carga en memoria.
 func loadVault() (vaultData, error) {
+	vaultFile := getVaultFilePath() // Get the dynamic path
 	data, err := os.ReadFile(vaultFile)
 	if err != nil {
 		// Si el archivo no existe, creamos un almacén vacío. Es normal la primera vez.
@@ -114,4 +116,13 @@ func loadVault() (vaultData, error) {
 		return nil, err
 	}
 	return vault, nil
+}
+
+func getVaultFilePath() string {
+	path := os.Getenv("VAULT_FILE_PATH")
+	if path == "" {
+		// Default to local file if the env var is not set
+		return "vault.json"
+	}
+	return path
 }

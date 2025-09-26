@@ -9,6 +9,9 @@ BUILD_DIR=build
 # Flags del compilador de Go para optimizar el binario de producción.
 LDFLAGS=-ldflags="-s -w"
 
+# Encuentra todos los archivos .go en el directorio actual
+GO_FILES := $(wildcard *.go)
+
 # --- Variables de Docker ---
 
 # Nombre de la imagen de Docker
@@ -24,7 +27,10 @@ BINARY_FULL_NAME=$(BUILD_DIR)/$(BINARY_NAME)
 
 # Si el sistema operativo es Windows, ajustamos el nombre del binario
 ifeq ($(OS), Windows_NT)
-    BINARY_FULL_NAME=$(BUILD_DIR)/$(BINARY_NAME).exe
+    BINARY_FULL_NAME := $(BUILD_DIR)/$(BINARY_NAME).exe
+    MKDIR_P = if not exist $(subst /,\,$(BUILD_DIR)) mkdir $(subst /,\,$(BUILD_DIR))
+else
+    MKDIR_P = mkdir -p $(BUILD_DIR)
 endif
 
 # --- Reglas (Targets) ---
@@ -32,49 +38,57 @@ endif
 # El target por defecto que se ejecuta con solo 'make'
 all: build
 
-# Target para compilar la aplicación localmente
-build:
-	@echo "🔨 Compilando para $(OS)..."
-	@mkdir -p $(BUILD_DIR)
+# El target 'build' ahora es solo un alias para el binario real.
+build: $(BINARY_FULL_NAME)
+
+# Esta es la regla principal de compilación.
+# Solo se ejecuta si el binario no existe o si algún archivo .go es más nuevo.
+$(BINARY_FULL_NAME): $(GO_FILES)
+	@echo "Compilando para $(OS)..."
+	@$(MKDIR_P)
 	@go build $(LDFLAGS) -o $(BINARY_FULL_NAME) .
-	@echo "✅ ¡Compilación exitosa! Binario disponible en: $(BINARY_FULL_NAME)"
+	@echo "Binario disponible en: $(BINARY_FULL_NAME)"
 
 # Target para limpiar los artefactos de compilación local
 clean:
-	@echo "🧹 Limpiando artefactos de compilación..."
+	@echo "Limpiando artefactos de compilación..."
 	@rm -rf $(BUILD_DIR)
-	@echo "✨ Directorio de trabajo limpio."
+	@echo "Directorio de trabajo limpio."
 
 # Target para compilar y ejecutar la aplicación localmente
 run: build
-	@echo "🚀 Ejecutando la aplicación localmente..."
+	@echo "Ejecutando la aplicación localmente..."
 	@$(BINARY_FULL_NAME) $(ARGS)
 
 # Target para gestionar las dependencias del proyecto
 tidy:
-	@echo "📦 Ordenando módulos de Go..."
+	@echo "Ordenando módulos de Go..."
 	@go mod tidy
 
-# --- Reglas de Docker ---
+# --- Atajos de Comandos ---
+login:
+	@make run ARGS=login
 
-# Target para construir la imagen de Docker
-docker-build:
-	@echo "🐳 Construyendo la imagen de Docker..."
-	@docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) .
-	@echo "✅ Imagen '$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)' construida con éxito."
+save:
+	@make run ARGS=save
 
-# Target para ejecutar la aplicación dentro de un contenedor Docker
-# Monta el directorio actual para que la app pueda acceder a .env y vault.json
-docker-run:
-	@echo "🚀 Ejecutando la aplicación en Docker..."
-	@docker run -it --rm -v "$(shell pwd):/app" -w /app $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) $(ARGS)
+get:
+	@make run ARGS=get
 
-# Target para limpiar la imagen de Docker
-docker-clean:
-	@echo "🧹 Eliminando la imagen de Docker..."
-	@docker rmi $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) || true
-	@echo "✨ Imagen eliminada."
+generate-pass:
+	@make run ARGS=generate-pass
 
+sync-save:
+	@make run ARGS=sync-save
+
+sync-load:
+	@make run ARGS=sync-load
+
+save-bw:
+	@make run ARGS="save --use-bitwarden"
+
+get-bw:
+	@make run ARGS="get --use-bitwarden"
 
 # Declara los targets que no corresponden a archivos para evitar conflictos
-.PHONY: all build clean run tidy docker-build docker-run docker-clean
+.PHONY: all clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw
