@@ -15,11 +15,12 @@ import (
 
 // Colors for terminal output (ANSI escape codes)
 const (
-	colorCyan   = "\033[36m"
-	colorGreen  = "\033[32m"
-	colorYellow = "\033[33m"
-	colorRed    = "\033[31m"
-	colorReset  = "\033[0m"
+	colorBlue   = "\033[34m" // DEBUG level
+	colorCyan   = "\033[36m" // INFO level
+	colorGreen  = "\033[32m" // SUCCESS level
+	colorRed    = "\033[31m" // ERROR level
+	colorReset  = "\033[0m"  // Reset color
+	colorYellow = "\033[33m" // WARNING level
 )
 
 var outputStr = strings.ToUpper(os.Getenv("LOG_OUTPUT"))
@@ -42,16 +43,16 @@ func init() {
 	}
 }
 
-func Debug(format string, a ...interface{}) {
+func Debug(format string, a ...any) {
 	if sugarLogger == nil {
 		msg := fmt.Sprintf(format, a...)
-		fmt.Printf("%s[DEBUG]%s %s\n", colorGreen, colorReset, msg)
+		fmt.Printf("%s[DEBUG]%s %s\n", colorBlue, colorReset, msg)
 		return
 	}
 	sugarLogger.Debugf(format, a...)
 }
 
-func Info(format string, a ...interface{}) {
+func Info(format string, a ...any) {
 	if sugarLogger == nil {
 		msg := fmt.Sprintf(format, a...)
 		fmt.Printf("%s[INFO]%s %s\n", colorCyan, colorReset, msg)
@@ -60,7 +61,7 @@ func Info(format string, a ...interface{}) {
 	sugarLogger.Infof(format, a...)
 }
 
-func Warn(format string, a ...interface{}) {
+func Warn(format string, a ...any) {
 	if sugarLogger == nil {
 		msg := fmt.Sprintf(format, a...)
 		fmt.Printf("%s[WARN]%s %s\n", colorYellow, colorReset, msg)
@@ -69,22 +70,38 @@ func Warn(format string, a ...interface{}) {
 	sugarLogger.Warnf(format, a...)
 }
 
-func Error(format string, a ...interface{}) {
+func Error(format string, a ...any) error {
 	if sugarLogger == nil {
-		msg := fmt.Sprintf(format, a...)
+		msg := fmt.Sprintf(format, a[:len(a)-1]...)
+		err, ok := a[len(a)-1].(error)
+		if ok {
+			msg = fmt.Sprintf("%s: %v", msg, err)
+			fmt.Fprintf(os.Stderr, "%s[ERROR]%s %s\n", colorRed, colorReset, msg)
+			return fmt.Errorf("%s", msg)
+		}
 		fmt.Fprintf(os.Stderr, "%s[ERROR]%s %s\n", colorRed, colorReset, msg)
-		return
+		return fmt.Errorf("%s", msg)
 	}
 	sugarLogger.Errorf(format, a...)
+	return fmt.Errorf(format, a...)
 }
 
-func Fatal(format string, a ...interface{}) {
+func Fatal(format string, a ...any) {
 	if sugarLogger == nil {
 		msg := fmt.Sprintf(format, a...)
 		fmt.Fprintf(os.Stderr, "%s[FATAL]%s %s\n", colorRed, colorReset, msg)
 		os.Exit(1)
 	}
 	sugarLogger.Fatalf(format, a...)
+}
+
+func Success(format string, a ...any) {
+	if sugarLogger == nil {
+		msg := fmt.Sprintf(format, a...)
+		fmt.Printf("%s[SUCCESS]%s %s\n", colorGreen, colorReset, msg)
+		return
+	}
+	sugarLogger.Infof(format, a...)
 }
 
 func initLogging() {
@@ -172,7 +189,9 @@ func buildLogger(logLevel zapcore.Level, outputPaths []string) (*zap.Logger, err
 			}
 			encoder = zapcore.NewConsoleEncoder(encoderCfg)
 		} else {
-			fmt.Printf("%s[INFO]%s  Attempting to configure log file at: %s\n", colorCyan, colorReset, path)
+			if logLevel == zapcore.DebugLevel {
+				fmt.Printf("%s[DEBUG]%s  Attempting to configure log file at: %s\n", colorBlue, colorReset, path)
+			}
 			timberjackLogger := &timberjack.Logger{
 				Filename:   path,
 				MaxSize:    10,   // megabytes after which new file is created
@@ -214,8 +233,8 @@ func customLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
 		color = colorRed
 		level = "FATAL"
 	default:
-		color = colorReset
-		level = "UNKNOWN"
+		color = colorGreen
+		level = "SUCCESS"
 	}
 	enc.AppendString(color + "[" + level + "]" + colorReset)
 }

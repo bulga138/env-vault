@@ -11,8 +11,6 @@ import (
 	"github.com/gofrs/flock"
 )
 
-const vaultFile = "vault.json"
-
 type StoredEnv struct {
 	Ciphertext string `json:"ciphertext"`
 	Salt       string `json:"salt"`

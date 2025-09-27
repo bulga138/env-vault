@@ -18,8 +18,7 @@ type BwsSecretListItem struct {
 }
 
 func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
-	fmt.Printf("Looking for secret with key '%s' in BitWarden...\n", repoName)
-
+	Debug("Looking for secret with key '%s' in BitWarden...\n", repoName)
 	projectID, err := getOrPromptEnvVar("BWS_PROJECT_ID", "Enter your BitWarden Project ID:", false)
 	if err != nil {
 		return nil, err
@@ -51,8 +50,8 @@ func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
 		return nil, fmt.Errorf("secret with key '%s' not found in project '%s'", repoName, projectID)
 	}
 
-	fmt.Println("   Found secret ID:", secretID)
-	fmt.Println("   Fetching secret value...")
+	Debug("Found secret ID: %s", secretID)
+	Debug("Fetching secret value...")
 
 	getCmd := exec.Command("bws", "secret", "get", "--output", "json", secretID)
 	var getOut, getStderr bytes.Buffer
@@ -68,7 +67,7 @@ func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse secret value from bws CLI: %w", err)
 	}
 
-	fmt.Println("✅ Master password successfully fetched and decrypted.")
+	Debug("Master password successfully fetched and decrypted.")
 	return []byte(secretValue.Value), nil
 }
 

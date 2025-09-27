@@ -15,9 +15,11 @@ var (
 )
 
 func main() {
+	initLogging()
+
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("Error loading .env file: ", err)
+		Warn("Error loading .env file, proceeding without it.", err)
 	}
 
 	flag.Parse()
@@ -45,23 +47,22 @@ func main() {
 }
 
 func handleSave() {
-	fmt.Println("Saving .env file...")
-
+	Info("Saving .env file...")
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		fmt.Printf("Error getting repository name: %v\n", err)
+		Error("Failed to get repository name: %v", err)
 		return
 	}
 
 	content, err := os.ReadFile(".env")
 	if err != nil {
-		fmt.Printf("Error reading '.env' file: %v\n", err)
+		Error("Error reading '.env' file: %v", err)
 		return
 	}
 
 	vault, err := loadVault()
 	if err != nil {
-		fmt.Printf("Error loading vault: %v\n", err)
+		Error("Error loading vault: %v", err)
 		return
 	}
 
@@ -73,45 +74,47 @@ func handleSave() {
 		if _, exists := vault[repoName]; exists {
 			password, passErr = promptForPassword("Enter your master password again: ")
 		} else {
-			fmt.Println("\nNo password found for this repository. Generating a new secure password...")
-			passStr, passErr := generateSecurePassword(16)
-			password = []byte(passStr)
-			if passErr == nil {
-				fmt.Println("\n✅ New master password generated for this repository:")
+			Info("\nNo password found for this repository. Generating a new secure password...")
+			passStr, genErr := generateSecurePassword(16)
+			if genErr != nil {
+				passErr = genErr
+			} else {
+				password = []byte(passStr)
+				Info("\n✅ New master password generated for this repository:")
 				fmt.Printf("\n%s\n\n", string(password))
-				fmt.Println("You will be asked if you want to save this to BitWarden shortly.")
-				fmt.Println("---------------------------------------------------------------")
+				Info("You will be asked if you want to save this to BitWarden shortly.")
+				Info("---------------------------------------------------------------")
 			}
 		}
 	}
 
 	if passErr != nil {
-		fmt.Printf("\nPassword error: %v\n", passErr)
+		Error("Password error: %v", passErr)
 		return
 	}
 
 	if err := saveEnv(repoName, content, password); err != nil {
-		fmt.Printf("Error saving .env to vault: %v\n", err)
+		Error("Error saving .env to vault: %v", err)
 		return
 	}
 
-	fmt.Printf("Do you wanna save the password in BitWarden Secrets Manager? (y/n): ")
+	Info("Do you wanna save the password in BitWarden Secrets Manager? (y/n): ")
 	var response string
 	fmt.Scanln(&response)
 	if strings.ToLower(response) == "y" {
 		if err := saveMasterPasswordToBitWarden(repoName, password); err != nil {
-			fmt.Printf("Error saving master password to BitWarden: %v\n", err)
+			Error("Error saving master password to BitWarden: %v", err)
 			return
 		}
-		fmt.Println("Master password saved to BitWarden Secrets Manager.")
+		Info("Master password saved to BitWarden Secrets Manager.")
 	} else {
-		fmt.Println("Warning: Master password not saved. Make sure to remember it, as you will need it to decrypt your .env files.")
+		Warn("Master password not saved. Make sure to remember it, as you will need it to decrypt your .env files.")
 	}
-	fmt.Printf(".env file for '%s' safely saved!\n", repoName)
+	Info(".env file for '%s' safely saved!", repoName)
 }
 
 func handleGet() {
-	fmt.Println("Getting .env file...")
+	Info("Getting .env file...")
 
 	outputFilename := ".env"
 	if _, err := os.Stat(".env"); err == nil {
@@ -121,12 +124,12 @@ func handleGet() {
 		} else {
 			outputFilename = ".env.env-vault"
 		}
-		fmt.Printf("⚠️  Found local .env file. It will be saved as '%s' to avoid overwriting.\n", outputFilename)
+		Warn("Found local .env file. It will be saved as '%s' to avoid overwriting.", outputFilename)
 	}
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		fmt.Printf("Error getting repo name: %v\n", err)
+		Error("Error getting repo name: %v", err)
 		return
 	}
 
@@ -139,91 +142,90 @@ func handleGet() {
 		password, passErr = promptForPassword("Enter your master password to decrypt: ")
 	}
 	if passErr != nil {
-		fmt.Printf("\nError reading password: %v\n", passErr)
+		Error("Error reading password: %v", passErr)
 		return
 	}
 
 	content, err := getEnv(repoName, password)
 	if err != nil {
-		fmt.Printf("Error al obtener el .env: %v\n", err)
+		Error("Error getting .env from vault: %v", err)
 		return
 	}
 
 	comment := fmt.Sprintf("# Sourced from env-vault for %s\n\n", repoName)
-
 	finalContent := append([]byte(comment), content...)
 
 	if err := os.WriteFile(outputFilename, finalContent, 0644); err != nil {
-		fmt.Printf("Error writing file '%s': %v\n", outputFilename, err)
+		Error("Error writing file '%s': %v", outputFilename, err)
 		return
 	}
 
-	fmt.Printf(".env file for '%s' recovered and saved as '%s'!\n", repoName, outputFilename)
+	Info(".env file for '%s' recovered and saved as '%s'!", repoName, outputFilename)
 }
 
 func handleGeneratePassword() {
 	const passwordLength = 16
 
-	fmt.Printf("🔒 Generating a new %d-character secure password...\n", passwordLength)
+	Info("🔒 Generating a new %d-character secure password...", passwordLength)
 	password, err := generateSecurePassword(passwordLength)
 	if err != nil {
-		fmt.Printf("Error: Could not generate password: %v\n", err)
+		Error("Error: Could not generate password: %v", err)
 		return
 	}
-	fmt.Println("✅ Your new secure password is:")
+	Info("✅ Your new secure password is:")
 	fmt.Printf("\n%s\n\n", password)
-	fmt.Println("Copy this password and store it in a safe place (like a password manager).")
+	Info("Copy this password and store it in a safe place (like a password manager).")
 }
 
 func handleSyncSave() {
-	fmt.Println("☁️  Saving current repo's secret to Firestore...")
+	Info("☁️  Saving current repo's secret to Firestore...")
 	ctx := context.Background()
 
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
-		fmt.Printf("Error: Could not connect to Firebase: %v\n", err)
+		Error("Error: Could not connect to Firebase: %v", err)
 		return
 	}
 	defer client.Close()
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		fmt.Printf("Error getting repo name: %v\n", err)
+		Error("Error getting repo name: %v", err)
 		return
 	}
 
 	vault, err := loadVault()
 	if err != nil {
-		fmt.Printf("Error loading local vault: %v\n", err)
+		Error("Error loading local vault: %v", err)
 		return
 	}
 	secret, ok := vault[repoName]
 	if !ok {
-		fmt.Printf("Error: No secret found for '%s' in local vault.json. Please run 'save' first.\n", repoName)
+		Error("Error: No secret found for '%s' in local vault.json. Please run 'save' first.", repoName)
 		return
 	}
 
 	if err := saveSecretToFirebase(ctx, client, repoName, secret); err != nil {
-		fmt.Printf("Error saving to Firestore: %v\n", err)
+		Error("Error saving to Firestore: %v", err)
 		return
 	}
 
-	fmt.Printf("✅ Secret for '%s' successfully saved to Firestore.\n", repoName)
+	Info("✅ Secret for '%s' successfully saved to Firestore.", repoName)
 }
 
 func handleSyncLoad() {
-	fmt.Println("☁️  Loading all secrets from Firestore to local vault.json...")
+	Info("☁️  Loading all secrets from Firestore to local vault.json...")
 	ctx := context.Background()
 
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
-		fmt.Printf("Error: Could not connect to Firebase: %v\n", err)
+		Error("Error: Could not connect to Firebase: %v", err)
 		return
 	}
 	defer client.Close()
 
 	if err := loadSecretsFromFirebase(ctx, client); err != nil {
-		fmt.Printf("Error loading from Firestore: %v\n", err)
+		Error("Error loading from Firestore: %v", err)
 		return
 	}
 }
@@ -232,11 +234,11 @@ func printHelp() {
 	fmt.Println("Welcome to env-vault 🛡️")
 	fmt.Println("Usage: env-vault <command>")
 	fmt.Println("\nAvailable commands:")
-	fmt.Println("  save    - Encrypt and save the current repository's .env file.")
-	fmt.Println("  get     - Retrieve and decrypt the .env file for the current repository.")
-	fmt.Println("  generate-pass   - Generate a new secure master password.")
-	fmt.Println("  sync-save       - Save the current repo's secret to Firestore.")
-	fmt.Println("  sync-load       - Load all secrets from Firestore to vault.json.")
+	fmt.Println("  save          - Encrypt and save the current repository's .env file.")
+	fmt.Println("  get           - Retrieve and decrypt the .env file for the current repository.")
+	fmt.Println("  generate-pass - Generate a new secure master password.")
+	fmt.Println("  sync-save     - Save the current repo's secret to Firestore.")
+	fmt.Println("  sync-load     - Load all secrets from Firestore to vault.json.")
 	fmt.Println("\nOptions:")
 	fmt.Println("  -use-bitwarden  - Use BitWarden to get the master password instead of prompting.")
 	fmt.Println("\nMake sure to set the necessary environment variables before using the tool.")
