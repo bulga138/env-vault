@@ -1,31 +1,17 @@
-# --- Variables de Configuración ---
-
-# Nombre base del binario
+# --- Configuration Variables ---
+# Binary name
 BINARY_NAME=env-vault
-
-# Directorio de salida para la compilación
+# Binary directory
 BUILD_DIR=build
-
-# Flags del compilador de Go para optimizar el binario de producción.
+# Flags to optimize the binary for production
 LDFLAGS=-ldflags="-s -w"
-
-# Encuentra todos los archivos .go en el directorio actual
+# Find all .go files in the current directory
 GO_FILES := $(wildcard *.go)
 
-# --- Variables de Docker ---
-
-# Nombre de la imagen de Docker
-DOCKER_IMAGE_NAME=env-vault
-
-# Tag de la imagen de Docker
-DOCKER_IMAGE_TAG=latest
-
-# --- Detección del Sistema Operativo ---
-
-# Por defecto, asumimos un sistema tipo Unix (Linux/macOS)
+# --- OS Detection ---
+# By default, assume a Unix-like OS
 BINARY_FULL_NAME=$(BUILD_DIR)/$(BINARY_NAME)
-
-# Si el sistema operativo es Windows, ajustamos el nombre del binario
+# If the operating system is Windows, adjust the binary name and mkdir command
 ifeq ($(OS), Windows_NT)
     BINARY_FULL_NAME := $(BUILD_DIR)/$(BINARY_NAME).exe
     MKDIR_P = if not exist $(subst /,\,$(BUILD_DIR)) mkdir $(subst /,\,$(BUILD_DIR))
@@ -33,39 +19,33 @@ else
     MKDIR_P = mkdir -p $(BUILD_DIR)
 endif
 
-# --- Reglas (Targets) ---
-
-# El target por defecto que se ejecuta con solo 'make'
+# --- Rules ---
+# The default target that runs with just 'make'
 all: build
-
-# El target 'build' ahora es solo un alias para el binario real.
+# The 'build' target is now just an alias for the real binary target.
 build: $(BINARY_FULL_NAME)
-
-# Esta es la regla principal de compilación.
-# Solo se ejecuta si el binario no existe o si algún archivo .go es más nuevo.
+# This is the main build rule.
+# It only runs if the binary doesn't exist or if any .go file is newer than the binary.
 $(BINARY_FULL_NAME): $(GO_FILES)
-	@echo "Compilando para $(OS)..."
+	@echo "Compiling for $(OS)..."
 	@$(MKDIR_P)
 	@go build $(LDFLAGS) -o $(BINARY_FULL_NAME) .
-	@echo "Binario disponible en: $(BINARY_FULL_NAME)"
-
-# Target para limpiar los artefactos de compilación local
+	@echo "Binary available at: $(BINARY_FULL_NAME)"
+# Clean target to remove build artifacts
 clean:
-	@echo "Limpiando artefactos de compilación..."
+	@echo "Cleaning up build artifacts..."
 	@rm -rf $(BUILD_DIR)
-	@echo "Directorio de trabajo limpio."
-
-# Target para compilar y ejecutar la aplicación localmente
+	@echo "Working directory cleaned."
+# Target to run the application locally
 run: build
-	@echo "Ejecutando la aplicación localmente..."
+	@echo "Running the application locally..."
 	@$(BINARY_FULL_NAME) $(ARGS)
-
-# Target para gestionar las dependencias del proyecto
+# Target to manage project dependencies
 tidy:
-	@echo "Ordenando módulos de Go..."
+	@echo "Tidying up Go modules..."
 	@go mod tidy
 
-# --- Atajos de Comandos ---
+# --- Command Shortcuts ---
 login:
 	@make run ARGS=login
 
@@ -90,5 +70,11 @@ save-bw:
 get-bw:
 	@make run ARGS="--use-bitwarden get"
 
-# Declara los targets que no corresponden a archivos para evitar conflictos
-.PHONY: all clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw
+setup-bw:
+	@echo "=> 1. Syncing all secrets from cloud..."
+	@make run ARGS="sync-load"
+	@echo "\n=> 2. Getting .env for current repo with BitWarden..."
+	@make run ARGS="--use-bitwarden get"
+
+# Declare non-file targets to avoid conflicts
+.PHONY: all clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw setup-bw
