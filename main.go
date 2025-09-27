@@ -78,6 +78,16 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 func main() {
 	utils.InitLogging()
 
+	configPath := os.Getenv("ENV_VAULT_CONFIG_PATH")
+	if configPath != "" {
+		err := godotenv.Load(configPath)
+		if err != nil {
+			utils.Warn("Error loading config file from ENV_VAULT_CONFIG_PATH: %v", err)
+		} else {
+			utils.Info("Configuration loaded from: %s", configPath)
+		}
+	}
+
 	err := godotenv.Load()
 	if err != nil {
 		utils.Warn("Error loading .env file, proceeding without it. Error: %v", err)
@@ -102,10 +112,12 @@ func main() {
 		handleSyncSave()
 	case "sync-load":
 		handleSyncLoad()
-	case "verify": // Nuevo comando
+	case "verify":
 		handleVerify()
 	case "rotate-pass":
 		handleRotatePassword()
+	case "setup-config":
+		handleSetupConfig()
 	default:
 		printHelp()
 	}
@@ -492,6 +504,88 @@ func handleVerify() {
 	} else {
 		utils.Success("🎉 Verificación de integridad completada. Todos los secretos son válidos.")
 	}
+}
+
+func handleSetupConfig() {
+	utils.Info("🚀 Starting env-vault configuration setup...")
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		utils.Error("Error: Could not determine user configuration directory: %v", err)
+		return
+	}
+	appConfigDir := filepath.Join(configDir, "env-vault")
+
+	if err := os.MkdirAll(appConfigDir, 0755); err != nil {
+		utils.Error("Error creating config directory: %v", err)
+		return
+	}
+
+	configFilePath := filepath.Join(appConfigDir, "env-vault.env")
+	utils.Info("Configuration file path: %s", configFilePath)
+	pepper := promptForInput("Enter a strong, random string for ENV_VAULT_PEPPER (required for security, leave empty to skip): ")
+	bwsProjectID := promptForInput("Enter your BWS_PROJECT_ID (Bitwarden, leave empty to skip): ")
+	googleCreds := promptForInput("Enter the FULL PATH to your Google Service Account Key JSON (for Firestore, leave empty to skip): ")
+
+	content := fmt.Sprintf(`
+# env-vault configuration file. DO NOT COMMIT TO GIT.
+# ---------------------------------------------------
+
+# 🛡️ Core Security Settings
+VAULT_FILE_PATH=%s/vault.json
+ENV_VAULT_PEPPER=%s
+
+# 🔑 Bitwarden Secrets Manager
+BWS_PROJECT_ID=%s
+
+# ☁️ Google Firestore/Cloud Sync
+GOOGLE_APPLICATION_CREDENTIALS=%s
+
+# ⚙️ Logging Configuration (Defaults)
+LOG_OUTPUT=TERMINAL
+LOG_FILE=%s/env-vault.log
+LOG_LEVEL=INFO
+`,
+		appConfigDir,
+		pepper,
+		bwsProjectID,
+		googleCreds,
+		appConfigDir,
+	)
+
+	if err := os.WriteFile(configFilePath, []byte(content), 0600); err != nil {
+		utils.Error("Error writing config file: %v", err)
+		return
+	}
+
+	utils.Success("\n✅ Configuration file created successfully at:")
+	fmt.Printf("   %s\n\n", configFilePath)
+
+	shellConfigPath := getShellConfigPath()
+
+	if shellConfigPath != "" {
+		utils.Info("⚠️ Final Step: Load Configuration")
+		utils.Warn("You need to add the following line to your shell startup file:")
+
+		fmt.Printf("\nexport ENV_VAULT_CONFIG_PATH=\"%s\"\n", configFilePath)
+
+		utils.Info("\nWe will now attempt to open your shell config file (%s) in your default editor.", shellConfigPath)
+		utils.Info("Please copy and paste the 'export' line above into the file.")
+
+		if err := openFileInEditor(shellConfigPath); err != nil {
+			utils.Warn("\nFailed to automatically open shell config file: %v", err)
+			utils.Warn("Please open %s manually and add the 'export' line.", shellConfigPath)
+		} else {
+			utils.Success("\nShell config file opened. Complete the step and then restart your terminal.")
+		}
+	} else {
+		utils.Info("⚠️ Final Step: Load Configuration")
+		utils.Warn("Could not automatically detect your shell configuration file.")
+		utils.Warn("Please add the following line to your shell's startup file (e.g., ~/.bashrc, ~/.zshrc):")
+		fmt.Printf("\nexport ENV_VAULT_CONFIG_PATH=\"%s\"\n\n", configFilePath)
+	}
+
+	utils.Info("Then, restart your terminal or run 'source [your shell config file]'.")
+	utils.Success("Setup complete! You can now run 'env-vault save' in any Git repository.")
 }
 
 func printHelp() {

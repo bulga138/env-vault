@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -166,4 +168,53 @@ func secureZero(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
+}
+
+func promptForInput(prompt string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	return strings.TrimSpace(input)
+}
+
+func getShellConfigPath() string {
+	shell := os.Getenv("SHELL")
+
+	if shell == "" {
+		shell = os.Getenv("COMSPEC")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	if strings.Contains(shell, "bash") {
+		return filepath.Join(home, ".bashrc")
+	} else if strings.Contains(shell, "zsh") {
+		return filepath.Join(home, ".zshrc")
+	} else if strings.Contains(shell, "fish") {
+		return filepath.Join(home, ".config", "fish", "config.fish")
+	}
+
+	if runtime.GOOS != "windows" {
+		return filepath.Join(home, ".bashrc")
+	}
+
+	return ""
+}
+
+func openFileInEditor(filePath string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", filePath)
+	case "darwin":
+		cmd = exec.Command("open", filePath)
+	case "windows":
+		cmd = exec.Command("cmd", "/C", "start", filePath)
+	default:
+		return fmt.Errorf("unsupported operating system for automatic opening")
+	}
+	return cmd.Start()
 }
