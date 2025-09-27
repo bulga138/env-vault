@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -104,7 +104,7 @@ func Success(format string, a ...any) {
 	sugarLogger.Infof(format, a...)
 }
 
-func initLogging() {
+func InitLogging() {
 	logLevel := getLogLevelFromEnv()
 	outputPaths := getLogOutputFromEnv()
 
