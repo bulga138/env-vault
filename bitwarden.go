@@ -1,4 +1,3 @@
-// filename: bitwarden.go
 package main
 
 import (
@@ -9,28 +8,23 @@ import (
 	"os/exec"
 )
 
-// BwsSecretValue defines the structure for the 'get' command JSON output.
 type BwsSecretValue struct {
 	Value string `json:"value"`
 }
 
-// BwsSecretListItem defines the structure for an item in the 'list' command output.
 type BwsSecretListItem struct {
 	ID  string `json:"id"`
 	Key string `json:"key"`
 }
 
-// getMasterPasswordFromSecretsManager fetches a secret by its key (repo name) within a project.
 func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
-	fmt.Printf("🔑 Looking for secret with key '%s' in BitWarden...\n", repoName)
+	fmt.Printf("Looking for secret with key '%s' in BitWarden...\n", repoName)
 
-	// Get Project ID from environment.
-	projectID := os.Getenv("BWS_PROJECT_ID")
-	if projectID == "" {
-		return nil, fmt.Errorf("BWS_PROJECT_ID environment variable must be set")
+	projectID, err := getOrPromptEnvVar("BWS_PROJECT_ID", "Enter your BitWarden Project ID:", false)
+	if err != nil {
+		return nil, err
 	}
 
-	// Step 1: List all secrets in the project to find the ID.
 	listCmd := exec.Command("bws", "secret", "list", "--output", "json", projectID)
 	var listOut, listStderr bytes.Buffer
 	listCmd.Stdout = &listOut
@@ -45,7 +39,6 @@ func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse secret list from bws CLI: %w", err)
 	}
 
-	// Step 2: Find our secret's ID in the list.
 	var secretID string
 	for _, secret := range secretList {
 		if secret.Key == repoName {
@@ -61,7 +54,6 @@ func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
 	fmt.Println("   Found secret ID:", secretID)
 	fmt.Println("   Fetching secret value...")
 
-	// Step 3: Get the secret's value using its ID.
 	getCmd := exec.Command("bws", "secret", "get", "--output", "json", secretID)
 	var getOut, getStderr bytes.Buffer
 	getCmd.Stdout = &getOut
@@ -78,4 +70,23 @@ func getMasterPasswordFromSecretsManager(repoName string) ([]byte, error) {
 
 	fmt.Println("✅ Master password successfully fetched and decrypted.")
 	return []byte(secretValue.Value), nil
+}
+
+func saveMasterPasswordToBitWarden(repoName string, password []byte) error {
+	projectID := os.Getenv("BWS_PROJECT_ID")
+	if projectID == "" {
+		return fmt.Errorf("BWS_PROJECT_ID environment variable must be set to save a new secret")
+	}
+
+	cmd := exec.Command("bws", "secret", "create", repoName, string(password), projectID)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to save secret to BitWarden: %s", stderr.String())
+	}
+
+	return nil
 }

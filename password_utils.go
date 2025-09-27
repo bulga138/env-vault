@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"os/exec"
 	"regexp"
 	"syscall"
 
@@ -69,23 +67,4 @@ func promptForNewPassword() ([]byte, error) {
 
 	fmt.Println("✅ Contraseña aceptada.")
 	return password, nil
-}
-
-func saveMasterPasswordToBitwarden(repoName string, password []byte) error {
-	projectID := os.Getenv("BWS_PROJECT_ID")
-	if projectID == "" {
-		return fmt.Errorf("BWS_PROJECT_ID environment variable must be set to save a new secret")
-	}
-
-	cmd := exec.Command("bws", "secret", "create", repoName, string(password), projectID)
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("failed to save secret to BitWarden: %s", stderr.String())
-	}
-
-	return nil
 }
