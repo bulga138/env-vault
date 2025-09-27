@@ -1,0 +1,112 @@
+name: Create Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      
+      - name: Extract Version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Prepare Release Assets and Changelog
+        id: prepare_assets
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          mkdir -p release-assets
+          cp .env.example release-assets/.env
+          
+          # Crear el archivo de instrucciones (SETUP_INSTRUCTIONS.txt)
+          cat << EOF > release-assets/SETUP_INSTRUCTIONS.txt
+          
+          # 🛡️ env-vault Setup Instructions
+          
+          This file provides guidance on obtaining the credentials needed for full env-vault functionality.
+          
+          ## 1. Bitwarden Secrets Manager (BWS)
+          
+          env-vault uses BWS for secure storage of your master passwords.
+          
+          ### BWS_PROJECT_ID
+          Required for env-vault to know where to save your secrets.
+          1. Log into your Bitwarden web vault.
+          2. Navigate to the 'Secrets Manager' section.
+          3. Select your project and copy the **Project ID**.
+          
+          ### BWS_ACCESS_TOKEN (Used by the 'bws' CLI)
+          The underlying Bitwarden CLI ('bws') requires an access token for authentication.
+          1. Go to your User Settings > API Keys.
+          2. Create a new API Key (personal or service account) with sufficient permissions (Read/Write to Secrets Manager).
+          3. Use the key to log in via the CLI: 'bws login --access-token <TOKEN>'
+          
+          ## 2. Google Firestore (Cloud Sync)
+          
+          Required for the 'sync-save' and 'sync-load' commands.
+          
+          ### serviceAccountKeys.json
+          This file is used to set the GOOGLE_APPLICATION_CREDENTIALS variable.
+          1. Go to your Google Cloud Console.
+          2. Navigate to Firebase Project Settings > Service Accounts.
+          3. Generate a new private key and download the JSON file.
+          4. **Keep this file secure** and set the path in your local environment.
+          
+          EOF
+          
+          # Extraer el changelog para el cuerpo de la release
+          # Usaremos 'awk' para imprimir desde el segundo encabezado (versión anterior) hasta el final del archivo.
+          CHANGELOG_BODY=$(awk '/^## / {if (++i == 2) {exit}} {print}' CHANGELOG.md)
+          echo "$CHANGELOG_BODY" > RELEASE_BODY.md
+
+      - name: Build Versioned Binaries
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          
+          # Linux/Unix: env-vault-1.0.0-linux-amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o release-assets/env-vault-${VERSION}-linux-amd64 .
+          
+          # macOS: env-vault-1.0.0-darwin-amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o release-assets/env-vault-${VERSION}-darwin-amd64 .
+          
+          # Windows: env-vault-1.0.0-windows-amd64.exe
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o release-assets/env-vault-${VERSION}-windows-amd64.exe .
+
+      - name: Create Versioned Archives
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          
+          # Renombramos el binario dentro del archivo comprimido a 'env-vault' para un PATH más limpio
+          TAR_ARGS="--transform='s|env-vault-${VERSION}-[^-]*|env-vault|' --mtime='1970-01-01 00:00:00'"
+          
+          # Linux
+          tar -czf release-assets/env-vault-linux-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-linux-amd64 .env.example SETUP_INSTRUCTIONS.txt
+          
+          # macOS
+          tar -czf release-assets/env-vault-darwin-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-darwin-amd64 .env.example SETUP_INSTRUCTIONS.txt
+          
+          # Windows
+          zip -j release-assets/env-vault-windows-${VERSION}.zip release-assets/env-vault-${VERSION}-windows-amd64.exe release-assets/.env.example release-assets/SETUP_INSTRUCTIONS.txt
+              
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-assets/*.tar.gz release-assets/*.zip
+          draft: false
+          prerelease: false
+          body_path: RELEASE_BODY.md

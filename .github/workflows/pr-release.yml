@@ -1,0 +1,63 @@
+name: Create SemVer Tag on PR Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  create_semver_tag:
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'RELEASE')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Determine SemVer Bump Type
+        id: semver
+        run: |
+          BUMP_TYPE="patch"
+          PR_LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
+          
+          if [[ $PR_LABELS == *"MAJOR"* ]]; then
+            BUMP_TYPE="major"
+          elif [[ $PR_LABELS == *"MINOR"* ]]; then
+            BUMP_TYPE="minor"
+          fi
+          echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Calculate Next Version, Tag, and Trigger Release
+        uses: anothrNick/github-tag-action@1.67.0 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: ${{ steps.semver.outputs.BUMP_TYPE }}
+          WITH_V: true
+          
+      - name: Remove SemVer and RELEASE Labels from PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Obtiene las etiquetas del PR
+            const labels = ['RELEASE', 'MAJOR', 'MINOR', 'PATCH'];
+            
+            // Itera y elimina las etiquetas
+            for (const label of labels) {
+              try {
+                await github.rest.issues.removeLabel({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label
+                });
+              } catch (error) {
+                // Ignora si la etiqueta ya no existe
+                console.log(`Label ${label} not found on PR or already removed.`);
+              }
+            }
