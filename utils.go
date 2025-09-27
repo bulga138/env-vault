@@ -122,12 +122,21 @@ func parseGitRemoteURL(rawURL string) (string, error) {
 	}
 
 	if strings.HasPrefix(rawURL, "git@") || (!strings.Contains(rawURL, "://") && strings.Contains(rawURL, ":")) {
+
 		parts := strings.SplitN(rawURL, "@", 2)
 		if len(parts) != 2 {
 			return "", fmt.Errorf("invalid SSH URL format")
 		}
-		hostPath := strings.TrimPrefix(parts[1], "/")
-		rawURL = "https://" + hostPath
+
+		hostPath := parts[1]
+
+		colonIndex := strings.Index(hostPath, ":")
+		if colonIndex == -1 {
+			rawURL = "https://" + strings.TrimPrefix(hostPath, "/")
+		} else {
+			cleanPath := strings.Replace(hostPath, ":", "/", 1)
+			rawURL = "https://" + cleanPath
+		}
 	}
 
 	u, err := url.Parse(strings.TrimSpace(rawURL))
@@ -150,7 +159,7 @@ func parseGitRemoteURL(rawURL string) (string, error) {
 		return "", fmt.Errorf("path is empty after cleaning")
 	}
 
-	return u.Host + "/" + path, nil
+	return u.Hostname() + "/" + path, nil
 }
 
 func secureZero(b []byte) {
