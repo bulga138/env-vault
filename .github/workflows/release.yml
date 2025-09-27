@@ -70,7 +70,11 @@ jobs:
           
           # Extraer el changelog para el cuerpo de la release
           # Usaremos 'awk' para imprimir desde el segundo encabezado (versión anterior) hasta el final del archivo.
-          CHANGELOG_BODY=$(awk '/^## / {if (++i == 2) {exit}} {print}' CHANGELOG.md)
+          if [ -f "CHANGELOG.md" ]; then
+            CHANGELOG_BODY=$(awk '/^## / {if (++i == 2) {exit}} {print}' CHANGELOG.md)
+          else
+            CHANGELOG_BODY="# 🚀 env-vault v${VERSION} Release\n\nNo CHANGELOG.md found. Please refer to the commits for changes."
+          fi
           echo "$CHANGELOG_BODY" > RELEASE_BODY.md
 
       - name: Build Versioned Binaries
