@@ -218,3 +218,15 @@ func openFileInEditor(filePath string) error {
 	}
 	return cmd.Start()
 }
+
+func getShellName() string {
+	shell := os.Getenv("SHELL")
+	if strings.Contains(shell, "bash") {
+		return "bash"
+	} else if strings.Contains(shell, "zsh") {
+		return "zsh"
+	} else if runtime.GOOS == "windows" {
+		return "powershell"
+	}
+	return "unknown"
+}

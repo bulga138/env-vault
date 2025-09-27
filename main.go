@@ -241,6 +241,10 @@ func handleGet() {
 			return
 		}
 		password, passErr = secretProvider.Get(hashedRepoName)
+		if passErr != nil {
+			utils.Error("Failed to fetch master password from %s: %v", secretProvider.Name(), passErr)
+			return
+		}
 	} else {
 		password, passErr = promptForPassword("Enter your master password to decrypt: ")
 	}
@@ -455,18 +459,14 @@ func handleRotatePassword() {
 func handleVerify() {
 	utils.Info("🔍 Iniciando verificación de integridad para todas las entradas del vault...")
 
-	// Función para obtener la contraseña (interactiva o Bitwarden)
 	getPasswordFunc := func(hashedKey string) ([]byte, error) {
 		if *useBitWarden {
-			// Usamos el proveedor de secretos para obtener la contraseña
 			secretProvider, err := providers.GetSecretProvider()
 			if err != nil {
 				return nil, fmt.Errorf("no secret provider configured: %w", err)
 			}
-			// Intentamos obtener la contraseña usando la clave hasheada
 			return secretProvider.Get(hashedKey)
 		} else {
-			// Solicitamos al usuario la contraseña (asumiendo que recuerda qué entrada es)
 			prompt := fmt.Sprintf("Enter master password for key %s (required for HMAC check): ", hashedKey)
 			return promptForPassword(prompt)
 		}
@@ -560,9 +560,30 @@ LOG_LEVEL=INFO
 	utils.Success("\n✅ Configuration file created successfully at:")
 	fmt.Printf("   %s\n\n", configFilePath)
 
+	configCommand := fmt.Sprintf("export ENV_VAULT_CONFIG_PATH=\"%s\"", configFilePath)
+	shellName := getShellName()
+
+	utils.Info("⚠️ Final Step: Load Configuration")
+	utils.Warn("You need to add the following line to your shell startup file.")
+
+	switch shellName {
+	case "powershell":
+		configCommand = fmt.Sprintf("$env:ENV_VAULT_CONFIG_PATH=\"%s\"", configFilePath)
+		utils.Info("Use this command (PowerShell syntax):")
+		fmt.Printf("\n   %s\n", configCommand)
+	case "bash", "zsh":
+		utils.Info("Use this command (Bash/Zsh syntax):")
+		fmt.Printf("\n   %s\n", configCommand)
+	default:
+		utils.Warn("\nCould not automatically detect your shell. Use one of the following commands:")
+		fmt.Printf("\n   Bash/Zsh: export ENV_VAULT_CONFIG_PATH=\"%s\"", configFilePath)
+		fmt.Printf("\n   PowerShell: $env:ENV_VAULT_CONFIG_PATH=\"%s\"", configFilePath)
+		fmt.Printf("\n   CMD: set ENV_VAULT_CONFIG_PATH=\"%s\"\n", configFilePath)
+	}
+
 	shellConfigPath := getShellConfigPath()
 
-	if shellConfigPath != "" {
+	if shellConfigPath != "" && shellName != "powershell" {
 		utils.Info("⚠️ Final Step: Load Configuration")
 		utils.Warn("You need to add the following line to your shell startup file:")
 
@@ -590,16 +611,17 @@ LOG_LEVEL=INFO
 
 func printHelp() {
 	fmt.Println("Welcome to env-vault 🛡️")
-	fmt.Println("Usage: env-vault <command>")
-	fmt.Println("\nAvailable commands:")
+	fmt.Println("Usage: env-vault [OPTION] COMMAND")
+	fmt.Println("\nCOMMANDS:")
 	fmt.Println("  save          - Encrypt and save the current repository's .env file.")
 	fmt.Println("  get           - Retrieve and decrypt the .env file for the current repository.")
 	fmt.Println("  generate-pass - Generate a new secure master password.")
 	fmt.Println("  sync-save     - Save the current repo's secret to Firestore.")
 	fmt.Println("  sync-load     - Load all secrets from Firestore to vault.json.")
-	fmt.Println("  rotate-pass     - Rotate the master password for the current (or specified) repository.")
-	fmt.Println("  verify        - Verify the integrity of all secrets in vault.json (requires master password).") // Nuevo help
-	fmt.Println("\nOptions:")
+	fmt.Println("  rotate-pass   - Rotate the master password for the current (or specified) repository.")
+	fmt.Println("  verify        - Verify the integrity of all secrets in vault.json (requires master password).")
+	fmt.Println("  setup-config  - Interactive setup for env-vault configuration.")
+	fmt.Println("\nOPTIONS:")
 	fmt.Println("  -use-bitwarden  - Use BitWarden to get the master password instead of prompting.")
 	fmt.Println("  -repo=NAME      - Specify repository name (e.g., 'user/repo') for rotate-pass.")
 	fmt.Println("\nMake sure to set the necessary environment variables before using the tool.")
