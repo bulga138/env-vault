@@ -22,8 +22,15 @@ jobs:
       - name: Configure Git for Private Go Modules
         shell: bash
         run: |
-          git config --global url."https://${{ secrets.PAT_RELEASE }}@github.com/".insteadOf "https://github.com/"
-      
+          # Configure Git to use the GITHUB_TOKEN for HTTPS access.
+          # We use the GITHUB_TOKEN directly as credentials for HTTPS.
+          # The GitHub Actions default token has read permissions on the current repo.
+          git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          
+          echo "Git configuration for private modules set successfully."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+     
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
