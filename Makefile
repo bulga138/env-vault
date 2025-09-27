@@ -102,6 +102,9 @@ sync-save:
 sync-load:
 	@make run ARGS=sync-load
 
+verify:
+	@make run ARGS=verify
+
 save-bw:
 	@make run ARGS="--use-bitwarden save"
 
@@ -115,5 +118,5 @@ setup-bw:
 	@make run ARGS="--use-bitwarden get"
 
 # Declare non-file targets to avoid conflicts
-.PHONY: all build clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw setup-bw
+.PHONY: all build clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw setup-bw verify
 
