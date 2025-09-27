@@ -1,80 +1,122 @@
-# --- Variables de Configuración ---
-
-# Nombre base del binario
-BINARY_NAME=env-vault
-
-# Directorio de salida para la compilación
-BUILD_DIR=build
-
-# Flags del compilador de Go para optimizar el binario de producción.
-LDFLAGS=-ldflags="-s -w"
-
-# --- Variables de Docker ---
-
-# Nombre de la imagen de Docker
-DOCKER_IMAGE_NAME=env-vault
-
-# Tag de la imagen de Docker
-DOCKER_IMAGE_TAG=latest
-
-# --- Detección del Sistema Operativo ---
-
-# Por defecto, asumimos un sistema tipo Unix (Linux/macOS)
-BINARY_FULL_NAME=$(BUILD_DIR)/$(BINARY_NAME)
-
-# Si el sistema operativo es Windows, ajustamos el nombre del binario
+# Detect if we're in a Windows-native environment
 ifeq ($(OS), Windows_NT)
-    BINARY_FULL_NAME=$(BUILD_DIR)/$(BINARY_NAME).exe
+  ifeq ($(MSYSTEM),)
+    # Native Windows (cmd.exe or PowerShell via make)
+    USE_COLOR = no
+  else
+    # MSYS2, Git Bash, etc.
+    USE_COLOR = yes
+  endif
+else
+  # Real Unix/Linux/macOS
+  USE_COLOR = yes
 endif
 
-# --- Reglas (Targets) ---
+# --- Color & Style Definitions ---
+# These are ANSI escape codes for coloring the output.
+CYAN   := \033[36m
+GREEN  := \033[32m
+YELLOW := \033[33m
+RESET  := \033[0m
 
-# El target por defecto que se ejecuta con solo 'make'
+# --- Logging Macros ---
+# These macros print messages with different severity levels.
+# They use colors if supported by the terminal.
+ifeq ($(USE_COLOR), yes)
+  log_info    = @printf '%b\n' "$(CYAN)[INFO]$(RESET)  $(1)"
+  log_warn    = @printf '%b\n' "$(YELLOW)[WARN]$(RESET)  $(1)"
+else
+  log_info    = @echo [INFO] $(1)
+  log_warn    = @echo [WARN] $(1)
+endif
+
+
+# --- Configuration Variables ---
+# Binary name
+BINARY_NAME=env-vault
+# Binary directory
+BUILD_DIR=build
+# Flags to optimize the binary for production
+LDFLAGS=-ldflags="-s -w"
+# Find all .go files in the current directory
+GO_FILES := $(wildcard *.go)
+
+# --- OS Detection ---
+# By default, assume a Unix-like OS
+BINARY_FULL_NAME=$(BUILD_DIR)/$(BINARY_NAME)
+# If the operating system is Windows, adjust the binary name and mkdir command
+ifeq ($(OS), Windows_NT)
+	BINARY_FULL_NAME := $(BUILD_DIR)/$(BINARY_NAME).exe
+	MKDIR_P = if not exist $(subst /,\,$(BUILD_DIR)) mkdir $(subst /,\,$(BUILD_DIR))
+else
+	MKDIR_P = mkdir -p $(BUILD_DIR)
+endif
+
+# --- Rules ---
+# The default target that runs with just 'make'
 all: build
 
-# Target para compilar la aplicación localmente
-build:
-	@echo "🔨 Compilando para $(OS)..."
-	@mkdir -p $(BUILD_DIR)
+# The 'build' target is now just an alias for the real binary target.
+build: $(BINARY_FULL_NAME)
+
+# This is the main build rule.
+# It only runs if the binary doesn't exist or if any .go file is newer than the binary.
+$(BINARY_FULL_NAME): $(GO_FILES)
+	$(call log_info, Compiling for $(OS)...)
+	@$(MKDIR_P)
 	@go build $(LDFLAGS) -o $(BINARY_FULL_NAME) .
-	@echo "✅ ¡Compilación exitosa! Binario disponible en: $(BINARY_FULL_NAME)"
+	$(call log_info, Binary available at: $(BINARY_FULL_NAME))
 
-# Target para limpiar los artefactos de compilación local
+# Clean target to remove build artifacts
 clean:
-	@echo "🧹 Limpiando artefactos de compilación..."
+	$(call log_info, Cleaning up build artifacts...)
 	@rm -rf $(BUILD_DIR)
-	@echo "✨ Directorio de trabajo limpio."
+	$(call log_info, Working directory cleaned.)
 
-# Target para compilar y ejecutar la aplicación localmente
+# Target to run the application locally
 run: build
-	@echo "🚀 Ejecutando la aplicación localmente..."
+	$(call log_info, Running: $(BINARY_FULL_NAME) $(ARGS))
 	@$(BINARY_FULL_NAME) $(ARGS)
 
-# Target para gestionar las dependencias del proyecto
+# Target to manage project dependencies
 tidy:
-	@echo "📦 Ordenando módulos de Go..."
+	$(call log_info, Tidying up Go modules...)
 	@go mod tidy
 
-# --- Reglas de Docker ---
+# --- Command Shortcuts ---
+login:
+	@make run ARGS=login
 
-# Target para construir la imagen de Docker
-docker-build:
-	@echo "🐳 Construyendo la imagen de Docker..."
-	@docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) .
-	@echo "✅ Imagen '$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)' construida con éxito."
+save:
+	@make run ARGS=save
 
-# Target para ejecutar la aplicación dentro de un contenedor Docker
-# Monta el directorio actual para que la app pueda acceder a .env y vault.json
-docker-run:
-	@echo "🚀 Ejecutando la aplicación en Docker..."
-	@docker run -it --rm -v "$(shell pwd):/app" -w /app $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) $(ARGS)
+get:
+	@make run ARGS=get
 
-# Target para limpiar la imagen de Docker
-docker-clean:
-	@echo "🧹 Eliminando la imagen de Docker..."
-	@docker rmi $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) || true
-	@echo "✨ Imagen eliminada."
+generate-pass:
+	@make run ARGS=generate-pass
 
+sync-save:
+	@make run ARGS=sync-save
 
-# Declara los targets que no corresponden a archivos para evitar conflictos
-.PHONY: all build clean run tidy docker-build docker-run docker-clean
+sync-load:
+	@make run ARGS=sync-load
+
+verify:
+	@make run ARGS=verify
+
+save-bw:
+	@make run ARGS="--use-bitwarden save"
+
+get-bw:
+	@make run ARGS="--use-bitwarden get"
+
+setup-bw:
+	$(call log_info, => 1. Syncing all secrets from cloud...)
+	@make run ARGS="sync-load"
+	$(call log_info, \n=> 2. Getting .env for current repo with BitWarden...)
+	@make run ARGS="--use-bitwarden get"
+
+# Declare non-file targets to avoid conflicts
+.PHONY: all build clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw setup-bw verify
+
