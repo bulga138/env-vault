@@ -36,7 +36,7 @@ jobs:
       - name: Calculate Next Version, Tag, and Trigger Release
         uses: anothrNick/github-tag-action@1.67.0 
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_RELEASE }} 
           DEFAULT_BUMP: ${{ steps.semver.outputs.BUMP_TYPE }}
           WITH_V: true
           
