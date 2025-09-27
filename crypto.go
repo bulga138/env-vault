@@ -17,17 +17,17 @@ func deriveKey(password, salt []byte) []byte {
 func encrypt(plaintext []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("error al crear el cifrador: %w", err)
+		return nil, fmt.Errorf("error creating cipher: %w", err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("error al crear GCM: %w", err)
+		return nil, fmt.Errorf("error creating GCM: %w", err)
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("error al generar nonce: %w", err)
+		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
 
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
@@ -37,23 +37,23 @@ func encrypt(plaintext []byte, key []byte) ([]byte, error) {
 func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("error al crear el cifrador: %w", err)
+		return nil, fmt.Errorf("error creating cipher: %w", err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("error al crear GCM: %w", err)
+		return nil, fmt.Errorf("error creating GCM: %w", err)
 	}
 
 	nonceSize := gcm.NonceSize()
 	if len(ciphertext) < nonceSize {
-		return nil, fmt.Errorf("el texto cifrado es demasiado corto")
+		return nil, fmt.Errorf("ciphertext is too short")
 	}
 
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error al descifrar: %w", err)
+		return nil, fmt.Errorf("error decrypting: %w", err)
 	}
 
 	return plaintext, nil
