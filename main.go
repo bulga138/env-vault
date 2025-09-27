@@ -5,30 +5,20 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 var (
-	useBitwarden = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
+	useBitWarden = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
 )
 
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("No se pudo cargar el archivo .env, asegurate de tener las variables de entorno configuradas.")
+		fmt.Println("Error loading .env file: ", err)
 	}
-
-	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
-	githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
-	if githubClientID == "" || githubClientSecret == "" {
-		fmt.Println("Error: Debes configurar las variables de entorno GITHUB_CLIENT_ID y GITHUB_CLIENT_SECRET.")
-		os.Exit(1)
-	}
-
-	initOAuth(githubClientID, githubClientSecret)
 
 	flag.Parse()
 
@@ -39,8 +29,6 @@ func main() {
 	command := flag.Arg(0)
 
 	switch command {
-	case "login":
-		handleLogin()
 	case "save":
 		handleSave()
 	case "get":
@@ -57,33 +45,33 @@ func main() {
 }
 
 func handleSave() {
-	fmt.Println("🔒 Guardando el archivo .env...")
+	fmt.Println("Saving .env file...")
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		fmt.Printf("Error al obtener el nombre del repositorio: %v\n", err)
+		fmt.Printf("Error getting repository name: %v\n", err)
 		return
 	}
 
 	content, err := os.ReadFile(".env")
 	if err != nil {
-		fmt.Printf("Error: No se pudo leer el archivo '.env': %v\n", err)
+		fmt.Printf("Error reading '.env' file: %v\n", err)
 		return
 	}
 
 	vault, err := loadVault()
 	if err != nil {
-		fmt.Printf("Error al cargar el almacén: %v\n", err)
+		fmt.Printf("Error loading vault: %v\n", err)
 		return
 	}
 
 	var password []byte
 	var passErr error
-	if *useBitwarden {
+	if *useBitWarden {
 		password, passErr = getMasterPasswordFromSecretsManager(repoName)
 	} else {
 		if _, exists := vault[repoName]; exists {
-			password, passErr = promptForPassword("Introduce tu contraseña maestra para actualizar: ")
+			password, passErr = promptForPassword("Enter your master password again: ")
 		} else {
 			fmt.Println("\nNo password found for this repository. Generating a new secure password...")
 			passStr, passErr := generateSecurePassword(16)
@@ -91,56 +79,67 @@ func handleSave() {
 			if passErr == nil {
 				fmt.Println("\n✅ New master password generated for this repository:")
 				fmt.Printf("\n%s\n\n", string(password))
-				fmt.Println("You will be asked if you want to save this to Bitwarden shortly.")
+				fmt.Println("You will be asked if you want to save this to BitWarden shortly.")
 				fmt.Println("---------------------------------------------------------------")
 			}
 		}
 	}
 
 	if passErr != nil {
-		fmt.Printf("\nError de contraseña: %v\n", passErr)
+		fmt.Printf("\nPassword error: %v\n", passErr)
 		return
 	}
 
 	if err := saveEnv(repoName, content, password); err != nil {
-		fmt.Printf("Error al guardar el .env en el almacén: %v\n", err)
+		fmt.Printf("Error saving .env to vault: %v\n", err)
 		return
 	}
 
-	fmt.Printf("Do you wanna save the password in Bitwarden Secrets Manager? (y/n): ")
+	fmt.Printf("Do you wanna save the password in BitWarden Secrets Manager? (y/n): ")
 	var response string
 	fmt.Scanln(&response)
 	if strings.ToLower(response) == "y" {
-		if err := saveMasterPasswordToBitwarden(repoName, password); err != nil {
-			fmt.Printf("Error al guardar la contraseña maestra en Bitwarden: %v\n", err)
+		if err := saveMasterPasswordToBitWarden(repoName, password); err != nil {
+			fmt.Printf("Error saving master password to BitWarden: %v\n", err)
 			return
 		}
-		fmt.Println("✅ Contraseña maestra guardada en Bitwarden Secrets Manager.")
+		fmt.Println("Master password saved to BitWarden Secrets Manager.")
 	} else {
-		fmt.Println("⚠️  Advertencia: No se guardó la contraseña maestra. Asegúrate de recordarla, ya que la necesitarás para descifrar tus .env.")
+		fmt.Println("Warning: Master password not saved. Make sure to remember it, as you will need it to decrypt your .env files.")
 	}
-	fmt.Printf("✅ ¡Archivo .env para '%s' guardado de forma segura!\n", repoName)
+	fmt.Printf(".env file for '%s' safely saved!\n", repoName)
 }
 
 func handleGet() {
-	fmt.Println("🔓 Obteniendo el archivo .env...")
+	fmt.Println("Getting .env file...")
+
+	outputFilename := ".env"
+	if _, err := os.Stat(".env"); err == nil {
+		overrideFilename := os.Getenv("ENV_VAULT_EXISTING_FILENAME")
+		if overrideFilename != "" {
+			outputFilename = overrideFilename
+		} else {
+			outputFilename = ".env.env-vault"
+		}
+		fmt.Printf("⚠️  Found local .env file. It will be saved as '%s' to avoid overwriting.\n", outputFilename)
+	}
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		fmt.Printf("Error al obtener el nombre del repositorio: %v\n", err)
+		fmt.Printf("Error getting repo name: %v\n", err)
 		return
 	}
 
 	var password []byte
 	var passErr error
 
-	if *useBitwarden {
+	if *useBitWarden {
 		password, passErr = getMasterPasswordFromSecretsManager(repoName)
 	} else {
-		password, passErr = promptForPassword("Introduce tu contraseña maestra para descifrar: ")
+		password, passErr = promptForPassword("Enter your master password to decrypt: ")
 	}
 	if passErr != nil {
-		fmt.Printf("\nError al leer la contraseña: %v\n", passErr)
+		fmt.Printf("\nError reading password: %v\n", passErr)
 		return
 	}
 
@@ -149,21 +148,17 @@ func handleGet() {
 		fmt.Printf("Error al obtener el .env: %v\n", err)
 		return
 	}
-	dirName := strings.ReplaceAll(repoName, "/", "-")
 
-	if err := os.MkdirAll(dirName, 0755); err != nil {
-		fmt.Printf("Error al crear el directorio '%s': %v\n", dirName, err)
+	comment := fmt.Sprintf("# Sourced from env-vault for %s\n\n", repoName)
+
+	finalContent := append([]byte(comment), content...)
+
+	if err := os.WriteFile(outputFilename, finalContent, 0644); err != nil {
+		fmt.Printf("Error writing file '%s': %v\n", outputFilename, err)
 		return
 	}
 
-	filePath := filepath.Join(dirName, ".env")
-
-	if err := os.WriteFile(filePath, content, 0644); err != nil {
-		fmt.Printf("Error al escribir el archivo .env en '%s': %v\n", filePath, err)
-		return
-	}
-
-	fmt.Printf("✅ ¡Archivo .env para '%s' recuperado y guardado localmente!\n", repoName)
+	fmt.Printf(".env file for '%s' recovered and saved as '%s'!\n", repoName, outputFilename)
 }
 
 func handleGeneratePassword() {
@@ -234,17 +229,16 @@ func handleSyncLoad() {
 }
 
 func printHelp() {
-	fmt.Println("Bienvenido a env-vault 🛡️")
-	fmt.Println("Uso: env-vault <comando>")
-	fmt.Println("\nComandos disponibles:")
-	fmt.Println("  login   - Autoriza la aplicación con tu cuenta de GitHub.")
-	fmt.Println("  save    - Cifra y guarda el .env del repositorio actual.")
-	fmt.Println("  get     - Recupera y descifra el .env para el repositorio actual.")
-	fmt.Println("  generate-pass   - Genera una nueva contraseña maestra segura.")
-	fmt.Println("  sync-save       - Guarda el secreto del repo actual en Firestore.")
-	fmt.Println("  sync-load       - Carga todos los secretos de Firestore a vault.json.")
-	fmt.Println("\nOpciones:")
-	fmt.Println("  -use-bitwarden  - Usa BitWarden para obtener la contraseña maestra en lugar de pedirla manualmente.")
-	fmt.Println("\nAsegúrate de configurar las variables de entorno necesarias antes de usar la herramienta.")
-	fmt.Println("Para más información, visita: https://github.com/bulga138/env-vault")
+	fmt.Println("Welcome to env-vault 🛡️")
+	fmt.Println("Usage: env-vault <command>")
+	fmt.Println("\nAvailable commands:")
+	fmt.Println("  save    - Encrypt and save the current repository's .env file.")
+	fmt.Println("  get     - Retrieve and decrypt the .env file for the current repository.")
+	fmt.Println("  generate-pass   - Generate a new secure master password.")
+	fmt.Println("  sync-save       - Save the current repo's secret to Firestore.")
+	fmt.Println("  sync-load       - Load all secrets from Firestore to vault.json.")
+	fmt.Println("\nOptions:")
+	fmt.Println("  -use-bitwarden  - Use BitWarden to get the master password instead of prompting.")
+	fmt.Println("\nMake sure to set the necessary environment variables before using the tool.")
+	fmt.Println("For more information, visit: https://github.com/bulga138/env-vault")
 }
