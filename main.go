@@ -582,7 +582,6 @@ LOG_LEVEL=INFO
 	}
 
 	shellConfigPath := getShellConfigPath()
-
 	if shellConfigPath != "" && shellName != "powershell" {
 		utils.Info("⚠️ Final Step: Load Configuration")
 		utils.Warn("You need to add the following line to your shell startup file:")
