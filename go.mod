@@ -6,12 +6,12 @@ toolchain go1.24.7
 
 require (
 	cloud.google.com/go/firestore v1.18.0
+	github.com/DeRuina/timberjack v1.3.7
 	github.com/bulga138/env-vault-config v0.0.0-20250926151434-49a5f711f2b2
 	github.com/gofrs/flock v0.12.1
 	github.com/joho/godotenv v1.5.1
-	github.com/zalando/go-keyring v0.2.6
+	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.42.0
-	golang.org/x/oauth2 v0.31.0
 	golang.org/x/term v0.35.0
 	google.golang.org/api v0.231.0
 )
@@ -44,6 +44,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
+	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
 	github.com/zeebo/errs v1.4.0 // indirect
@@ -56,7 +57,9 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/oauth2 v0.31.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
@@ -69,9 +72,6 @@ require (
 )
 
 require (
-	al.essio.dev/pkg/shellescape v1.5.1 // indirect
 	firebase.google.com/go/v4 v4.18.0
-	github.com/danieljoos/wincred v1.2.2 // indirect
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 )
