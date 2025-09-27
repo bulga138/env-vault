@@ -3,7 +3,10 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -57,4 +60,20 @@ func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
+}
+
+func computeHMAC(data, key []byte) string {
+	h := hmac.New(sha256.New, key)
+	h.Write(data)
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+func verifyHMAC(data, key []byte, expectedHMAC string) bool {
+	expected, err := base64.StdEncoding.DecodeString(expectedHMAC)
+	if err != nil {
+		return false
+	}
+	h := hmac.New(sha256.New, key)
+	h.Write(data)
+	return hmac.Equal(h.Sum(nil), expected)
 }
