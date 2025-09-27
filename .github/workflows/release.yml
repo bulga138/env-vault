@@ -8,23 +8,22 @@ on:
 jobs:
   build_and_release:
     runs-on: ubuntu-latest
+
+    env:
+      GOPRIVATE: github.com/bulga138/*
     
     permissions:
       contents: write
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
       - name: Configure Git for Private Go Modules
         shell: bash
         run: |
-          go env -w "GOPRIVATE=github.com/bulga138"
-          git config --global url."https://${{ secrets.PAT_RELEASE }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          echo "Git configuration for private modules set successfully."
+          git config --global url."https://${{ secrets.PAT_RELEASE }}@github.com/".insteadOf "https://github.com/"
       
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT_RELEASE }}
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
