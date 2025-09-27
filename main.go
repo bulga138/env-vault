@@ -80,7 +80,7 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		utils.Warn("Error loading .env file, proceeding without it.", err)
+		utils.Warn("Error loading .env file, proceeding without it. Error: %v", err)
 	}
 
 	flag.Parse()
