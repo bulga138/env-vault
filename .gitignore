@@ -1,10 +1,12 @@
 # Archivo del almacén de secretos local
-vault.json
+vault.json*
+*/*-env-vault/**
 
 # Archivos de entorno locales (¡nunca deben subirse!)
 .env
 *.env
 .env.*
+!.env.example
 serviceAccountKey.json
 
 # Binarios compilados y directorios de build
