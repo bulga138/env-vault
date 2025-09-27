@@ -65,14 +65,14 @@ func loadSecretsFromFirebase(ctx context.Context, client *firestore.Client) erro
 	}
 
 	if len(docs) == 0 {
-		fmt.Println("No secrets found in Firestore.")
+		Info("No secrets found in Firestore.")
 		return nil
 	}
 
 	for _, doc := range docs {
 		var secret StoredEnv
 		if err := doc.DataTo(&secret); err != nil {
-			fmt.Printf("Warning: could not parse secret for doc ID '%s', skipping: %v\n", doc.Ref.ID, err)
+			Warn("Warning: could not parse secret for doc ID '%s', skipping: %v\n", doc.Ref.ID, err)
 			continue
 		}
 		repoName := desanitizeRepoNameFromFirestore(doc.Ref.ID)
@@ -83,6 +83,6 @@ func loadSecretsFromFirebase(ctx context.Context, client *firestore.Client) erro
 		return fmt.Errorf("failed to write secrets to local vault.json: %w", err)
 	}
 
-	fmt.Printf("✅ Successfully loaded %d secrets from Firestore into vault.json.\n", len(localVault))
+	Success("Loaded %d secrets from Firestore into vault.json.", len(localVault))
 	return nil
 }
