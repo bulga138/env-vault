@@ -19,8 +19,12 @@ jobs:
       - name: Configure Git for Private Go Modules
         shell: bash
         run: |
-          go env -w GOPRIVATE="github.com/bulga138/*"
-          git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          REPO_HOST="github.com"
+          go env -w GOPRIVATE="${REPO_HOST}/bulga138/*"
+          git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@${REPO_HOST}/".insteadOf "https://${REPO_HOST}/"
+          echo "Git configuration for private modules set successfully."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Go
         uses: actions/setup-go@v5
