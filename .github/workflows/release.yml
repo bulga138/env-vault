@@ -63,7 +63,7 @@ jobs:
           This file is used to set the GOOGLE_APPLICATION_CREDENTIALS variable.
           1. Go to your Google Cloud Console.
           2. Navigate to Firebase Project Settings > Service Accounts.
-          3. Generate a new private key, download the JSON file and rename it to `serviceAccountKeys.json`
+          3. Generate a new private key, download the JSON file and rename it to 'serviceAccountKeys.json'
           4. **Keep this file secure** and set the path in your local environment as GOOGLE_APPLICATION_CREDENTIALS.
           
           EOF
