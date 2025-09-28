@@ -93,9 +93,10 @@ jobs:
       - name: Create Versioned Archives
         run: |
          VERSION=${{ steps.get_version.outputs.VERSION }} 
+         TIMESTAMP="1970-01-01 00:00:00"
          # CORRECTED: Removing the single quotes around the 's|...|...' expression.
          # This ensures 'tar' receives a valid transformation          
-         TAR_ARGS="--transform=s|env-vault-${VERSION}-[^-]*|env-vault| --mtime='1970-01-01 00:00:00'"    
+         TAR_ARGS="--transform=s|env-vault-${VERSION}-[^-]*|env-vault| --mtime='${TIMESTAMP}'"    
          # Linux
          tar -czf release-assets/env-vault-linux-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-linux-amd64 .env SETUP_INSTRUCTIONS.txt   
          # macOS
