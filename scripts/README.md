@@ -5,5 +5,4 @@ This directory contains various utility scripts for `env-vault` development, tes
 ## Available Scripts
 
 - `setup-bitwarden-cli.sh`: Installs and configures the Bitwarden CLI (`bws`).
-- `run-tests.sh`: Executes all unit and integration tests for the project.
 - `build-release.sh`: Builds `env-vault` binaries for multiple platforms and architectures.
