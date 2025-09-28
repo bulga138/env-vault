@@ -9,7 +9,6 @@ import (
 	firebase "firebase.google.com/go/v4"
 	"google.golang.org/api/option"
 
-	config "github.com/bulga138/env-vault-config"
 	"github.com/bulga138/env-vault/utils"
 )
 
@@ -20,9 +19,9 @@ func initFirestoreClient(ctx context.Context) (*firestore.Client, error) {
 	}
 
 	opt := option.WithCredentialsFile(credPath)
-
+ firebaseProjectId := os.Getenv("FIREBASE_PROJECT_ID")
 	conf := &firebase.Config{
-		ProjectID: config.FirebaseProjectID,
+		ProjectID: firebaseProjectId,
 	}
 
 	app, err := firebase.NewApp(ctx, conf, opt)
