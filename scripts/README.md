@@ -4,4 +4,4 @@ This directory contains various utility scripts for `env-vault` development, tes
 
 ## Available Scripts
 
-- `setup-bitwarden-cli.sh`: Installs and configures the Bitwarden CLI (`bws`).
+- `setup-bitwarden-cli.sh` / `setup-bitwarden-cli.ps1`: Installs and configures the Bitwarden CLI (`bws`).
