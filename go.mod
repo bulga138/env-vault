@@ -7,7 +7,6 @@ toolchain go1.24.7
 require (
 	cloud.google.com/go/firestore v1.18.0
 	github.com/DeRuina/timberjack v1.3.7
-	github.com/bulga138/env-vault-config v0.0.0-20250926151434-49a5f711f2b2
 	github.com/gofrs/flock v0.12.1
 	github.com/joho/godotenv v1.5.1
 	go.uber.org/zap v1.27.0
