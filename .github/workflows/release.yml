@@ -8,7 +8,6 @@ on:
 jobs:
   build_and_release:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -34,7 +33,6 @@ jobs:
           
           # Crear el archivo de instrucciones (SETUP_INSTRUCTIONS.txt)
           cat << EOF > release-assets/SETUP_INSTRUCTIONS.txt
-          
           # 🛡️ env-vault Setup Instructions
           
           This file provides guidance on obtaining the credentials needed for full env-vault functionality.
@@ -107,19 +105,23 @@ jobs:
           --transform="s|env-vault-${VERSION}-darwin-amd64|env-vault|" \
           --mtime="$TIMESTAMP" \
           -C release-assets \
-           env-vault-${VERSION}-darwin-amd64 .env SETUP_INSTRUCTIONS.txt
+          env-vault-${VERSION}-darwin-amd64 .env SETUP_INSTRUCTIONS.txt
     
-           # Windows (unchanged)
-           zip -j release-assets/env-vault-windows-${VERSION}.zip \
-           release-assets/env-vault-${VERSION}-windows-amd64.exe \
-           release-assets/.env \
-           release-assets/SETUP_INSTRUCTIONS.txt
-        
+          # Windows
+          zip -j release-assets/env-vault-windows-${VERSION}.zip \
+          release-assets/env-vault-${VERSION}-windows-amd64.exe \
+          release-assets/.env \
+          release-assets/SETUP_INSTRUCTIONS.txt
+
+      - name: List created files (for debugging)
+        run: ls -la release-assets/
+
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          files: release-assets/*.tar.gz release-assets/*.zip
+          files: |
+            release-assets/*.tar.gz
+            release-assets/*.zip
           draft: false
           prerelease: false
           body_path: RELEASE_BODY.md
