@@ -9,9 +9,6 @@ jobs:
   build_and_release:
     runs-on: ubuntu-latest
 
-    env:
-      GOPRIVATE: github.com/bulga138/*
-    
     permissions:
       contents: write
 
@@ -19,18 +16,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
       
-      - name: Configure Git for Private Go Modules
-        shell: bash
-        run: |
-          # Configure Git to use the GITHUB_TOKEN for HTTPS access.
-          # We use the GITHUB_TOKEN directly as credentials for HTTPS.
-          # The GitHub Actions default token has read permissions on the current repo.
-          git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          
-          echo "Git configuration for private modules set successfully."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
-     
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -107,19 +92,16 @@ jobs:
 
       - name: Create Versioned Archives
         run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          
-          # Renombramos el binario dentro del archivo comprimido a 'env-vault' para un PATH más limpio
-          TAR_ARGS="--transform='s|env-vault-${VERSION}-[^-]*|env-vault|' --mtime='1970-01-01 00:00:00'"
-          
-          # Linux
-          tar -czf release-assets/env-vault-linux-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-linux-amd64 .env.example SETUP_INSTRUCTIONS.txt
-          
-          # macOS
-          tar -czf release-assets/env-vault-darwin-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-darwin-amd64 .env.example SETUP_INSTRUCTIONS.txt
-          
-          # Windows
-          zip -j release-assets/env-vault-windows-${VERSION}.zip release-assets/env-vault-${VERSION}-windows-amd64.exe release-assets/.env.example release-assets/SETUP_INSTRUCTIONS.txt
+         VERSION=${{ steps.get_version.outputs.VERSION }} 
+         # CORRECTED: Removing the single quotes around the 's|...|...' expression.
+         # This ensures 'tar' receives a valid transformation          
+         TAR_ARGS="--transform=s|env-vault-${VERSION}-[^-]*|env-vault| --mtime='1970-01-01 00:00:00'"    
+         # Linux
+         tar -czf release-assets/env-vault-linux-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-linux-amd64 .env.example SETUP_INSTRUCTIONS.txt   
+         # macOS
+         tar -czf release-assets/env-vault-darwin-${VERSION}.tar.gz -C release-assets $TAR_ARGS env-vault-${VERSION}-darwin-amd64 .env.example SETUP_INSTRUCTIONS.txt  
+         # Windows (This part uses zip and is unaffected)
+         zip -j release-assets/env-vault-windows-${VERSION}.zip release-assets/env-vault-${VERSION}-windows-amd64.exe release-assets/.env.example release-assets/SETUP_INSTRUCTIONS.txt
               
       - name: Create GitHub Release
         id: create_release
