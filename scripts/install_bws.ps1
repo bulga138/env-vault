@@ -56,6 +56,25 @@ param(
     [switch]$AllowDestructiveCleanup
 )
 
+function Test-Checksum {
+    param($zipPath)
+    Write-Host "Validating checksum..."
+
+    $checksumUrl = "https://github.com/bitwarden/sdk-sm/releases/download/bws-v$bwsVersion/bws-sha256-checksums-$bwsVersion.txt"
+    $checksumFile = Join-Path $env:TEMP "bws-checksums.txt"
+    Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
+
+    $expectedChecksum = (Get-Content $checksumFile | Where-Object { $_ -match "bws-$arch-pc-windows-msvc-$bwsVersion.zip" }).Split(" ")[0]
+    $actualChecksum = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash
+
+    if ($actualChecksum -ne $expectedChecksum) {
+        throw "Checksum validation failed. Expected: $expectedChecksum, Actual: $actualChecksum"
+    }
+    else {
+        Write-Host "Checksum validation successful."
+    }
+}
+
 # -----------------------------------------------------------------
 # Logging
 # -----------------------------------------------------------------
@@ -128,9 +147,10 @@ try {
         function Convert-ToVersion([string]$tag) {
             try {
                 # Strip everything that is not a numeric version (leading "v", "bws-", etc.)
-                $clean = $tag -replace '^[^\d]*',''   # remove non‑digit prefix
+                $clean = $tag -replace '^[^\d]*', ''   # remove non‑digit prefix
                 return [Version]$clean
-            } catch {
+            }
+            catch {
                 return [Version]'0.0.0'
             }
         }
