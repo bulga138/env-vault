@@ -128,14 +128,14 @@ func handleSave() {
 	repoName, err := getCurrentRepoName()
 	if err != nil {
 		logAudit("save", "", false, fmt.Sprintf("Failed to get repository name: %v", err))
-		utils.Error("Failed to get repository name: %v", err)
+		utils.Fatal("Failed to get repository name: %v", err)
 		return
 	}
 	hashedRepoName := utils.GetRepoKey(repoName)
 
 	vault, err := loadVault()
 	if err != nil {
-		utils.Error("Error loading vault: %v", err)
+		utils.Fatal("Error loading vault: %v", err)
 		return
 	}
 
@@ -145,32 +145,31 @@ func handleSave() {
 	if *useBitWarden {
 		secretProvider, err := providers.GetSecretProvider()
 		if err != nil {
-			utils.Error(ErrNoSecretProvider.Error(), ":%v", err)
+			utils.Fatal(ErrNoSecretProvider.Error(), ":%v", err)
 			return
 		}
 		password, passErr = secretProvider.Get(hashedRepoName)
+	} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
+		password = []byte(p)
+	} else if _, exists := vault[hashedRepoName]; exists {
+		password, passErr = promptForPassword("Enter your master password again: ")
 	} else {
-		// Use hashed repo name for local vault check
-		if _, exists := vault[hashedRepoName]; exists {
-			password, passErr = promptForPassword("Enter your master password again: ")
+		utils.Info("\nNo secret found for this repository locally. Generating a new secure password...")
+		passStr, genErr := generateSecurePassword(16)
+		if genErr != nil {
+			passErr = genErr
 		} else {
-			utils.Info("\nNo secret found for this repository locally. Generating a new secure password...")
-			passStr, genErr := generateSecurePassword(16)
-			if genErr != nil {
-				passErr = genErr
-			} else {
-				password = []byte(passStr)
-				passwordGenerated = true
-				utils.Info("\n✅ New master password generated for this repository:")
-				fmt.Printf("\n%s\n\n", string(password))
-				utils.Info("---------------------------------------------------------------")
-			}
+			password = []byte(passStr)
+			passwordGenerated = true
+			utils.Info("\n✅ New master password generated for this repository:")
+			fmt.Printf("\n%s\n\n", string(password))
+			utils.Info("---------------------------------------------------------------")
 		}
 	}
 
 	if passErr != nil {
 		defer secureZero(password)
-		utils.Error("Password error: %v", passErr)
+		utils.Fatal("Password error: %v", passErr)
 		return
 	}
 
@@ -182,11 +181,11 @@ func handleSave() {
 		if strings.ToLower(response) == "y" {
 			secretProvider, err := providers.GetSecretProvider() // Get the provider instance
 			if err != nil {
-				utils.Error(ErrNoSecretProvider.Error(), ":%v", err)
+				utils.Fatal(ErrNoSecretProvider.Error(), ":%v", err)
 				return
 			}
 			if err := secretProvider.Set(hashedRepoName, password); err != nil { // Call method on instance
-				utils.Error("Error saving to %s: %v", secretProvider.Name(), err) // Call method on instance
+				utils.Fatal("Error saving to %s: %v", secretProvider.Name(), err) // Call method on instance
 				return
 			}
 			utils.Info("Master password saved to BitWarden Secrets Manager.")
@@ -197,13 +196,13 @@ func handleSave() {
 
 	content, err := os.ReadFile(".env")
 	if err != nil {
-		utils.Error("Error reading '.env' file: %v", err)
+		utils.Fatal("Error reading '.env' file: %v", err)
 		return
 	}
 
 	if err := saveEnv(repoName, content, password); err != nil {
 		logAudit("save", repoName, false, fmt.Sprintf("Error saving .env to vault: %v", err))
-		utils.Error("Error saving .env to vault: %v", err)
+		utils.Fatal("Error saving .env to vault: %v", err)
 		return
 	}
 	logAudit("save", repoName, true, "")
@@ -226,7 +225,7 @@ func handleGet() {
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		utils.Error("Error getting repo name: %v", err)
+		utils.Fatal("Error getting repo name: %v", err)
 		return
 	}
 	hashedRepoName := utils.GetRepoKey(repoName)
@@ -237,33 +236,35 @@ func handleGet() {
 	if *useBitWarden {
 		secretProvider, err := providers.GetSecretProvider()
 		if err != nil {
-			utils.Error(ErrNoSecretProvider.Error(), ":%v", err)
+			utils.Fatal(ErrNoSecretProvider.Error(), ":%v", err)
 			return
 		}
 		password, passErr = secretProvider.Get(hashedRepoName)
 		if passErr != nil {
-			utils.Error("Failed to fetch master password from %s: %v", secretProvider.Name(), passErr)
+			utils.Fatal("Failed to fetch master password from %s: %v", secretProvider.Name(), passErr)
 			return
 		}
+	} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
+		password = []byte(p)
 	} else {
 		password, passErr = promptForPassword("Enter your master password to decrypt: ")
 	}
 	if passErr != nil {
-		utils.Error("Error reading password: %v", passErr)
+		utils.Fatal("Error reading password: %v", passErr)
 		return
 	}
 
 	content, err := getEnv(repoName, password)
 	if err != nil {
-		utils.Error("Error getting .env from vault: %v", err)
+		utils.Fatal("Error getting .env from vault: %v", err)
 		return
 	}
 
 	comment := fmt.Sprintf("# Sourced from env-vault for %s\n\n", repoName)
 	finalContent := append([]byte(comment), content...)
 
-	if err := os.WriteFile(outputFilename, finalContent, 0644); err != nil {
-		utils.Error("Error writing file '%s': %v", outputFilename, err)
+	if err := os.WriteFile(outputFilename, finalContent, 0600); err != nil {
+		utils.Fatal("Error writing file '%s': %v", outputFilename, err)
 		return
 	}
 
@@ -276,7 +277,7 @@ func handleGeneratePassword() {
 	utils.Info("🔒 Generating a new %d-character secure password...", passwordLength)
 	password, err := generateSecurePassword(passwordLength)
 	if err != nil {
-		utils.Error("Error: Could not generate password: %v", err)
+		utils.Fatal("Error: Could not generate password: %v", err)
 		return
 	}
 	utils.Info("✅ Your new secure password is:")
@@ -290,33 +291,33 @@ func handleSyncSave() {
 
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
-		utils.Error("Error: Could not connect to Firebase: %v", err)
+		utils.Fatal("Error: Could not connect to Firebase: %v", err)
 		return
 	}
 	defer client.Close()
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
-		utils.Error("Error getting repo name: %v", err)
+		utils.Fatal("Error getting repo name: %v", err)
 		return
 	}
 
 	vault, err := loadVault()
 	if err != nil {
-		utils.Error("Error loading local vault: %v", err)
+		utils.Fatal("Error loading local vault: %v", err)
 		return
 	}
 
 	hashedRepoName := utils.GetRepoKey(repoName)
 	secret, ok := vault[hashedRepoName]
 	if !ok {
-		utils.Error("Error: No secret found for '%s' in local vault.json. Please run 'save' first.", repoName)
+		utils.Fatal("Error: No secret found for '%s' in local vault.json. Please run 'save' first.", repoName)
 		logAudit("sync-save", repoName, false, "No secret found for repository in local vault.json.")
 		return
 	}
 
 	if err := saveSecretToFirebase(ctx, client, repoName, secret); err != nil {
-		utils.Error("Error saving to Firestore: %v", err)
+		utils.Fatal("Error saving to Firestore: %v", err)
 		return
 	}
 
@@ -329,13 +330,13 @@ func handleSyncLoad() {
 
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
-		utils.Error("Error: Could not connect to Firebase: %v", err)
+		utils.Fatal("Error: Could not connect to Firebase: %v", err)
 		return
 	}
 	defer client.Close()
 
 	if err := loadSecretsFromFirebase(ctx, client); err != nil {
-		utils.Error("Error loading from Firestore: %v", err)
+		utils.Fatal("Error loading from Firestore: %v", err)
 		return
 	}
 }
@@ -351,20 +352,20 @@ func handleRotatePassword() {
 	} else {
 		repoName, err = getCurrentRepoName()
 		if err != nil {
-			utils.Error("Failed to detect repository name: %v", err)
+			utils.Fatal("Failed to detect repository name: %v", err)
 			return
 		}
 	}
 
 	vault, err := loadVault()
 	if err != nil {
-		utils.Error("Error loading vault: %v", err)
+		utils.Fatal("Error loading vault: %v", err)
 		return
 	}
 
 	hashedRepoName := utils.GetRepoKey(repoName)
 	if _, exists := vault[hashedRepoName]; !exists {
-		utils.Error("No entry found for repository '%s' in vault. Run 'save' first.", repoName)
+		utils.Fatal("No entry found for repository '%s' in vault. Run 'save' first.", repoName)
 		return
 	}
 
@@ -372,92 +373,94 @@ func handleRotatePassword() {
 	if *useBitWarden {
 		secretProvider, err := providers.GetSecretProvider()
 		if err != nil {
-			utils.Error(ErrNoSecretProvider.Error(), ":%v", err)
+			utils.Fatal(ErrNoSecretProvider.Error(), ":%v", err)
 			return
 		}
 		oldPassword, err = secretProvider.Get(hashedRepoName)
 		if err != nil {
-			utils.Error("Failed to get password from secret provider: %v", err)
+			utils.Fatal("Failed to get password from secret provider: %v", err)
 			return
 		}
+	} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
+		oldPassword = []byte(p)
 	} else {
 		oldPassword, err = promptForPassword("Enter CURRENT master password to decrypt: ")
 		if err != nil {
-			utils.Error("Failed to read current password: %v", err)
+			utils.Fatal("Failed to read current password: %v", err)
 			return
 		}
 	}
 
 	if oldPassword == nil {
-		utils.Error("Failed to obtain current password")
+		utils.Fatal("Failed to obtain current password")
 		return
 	}
 
 	plaintext, err := getEnv(repoName, oldPassword)
 	if err != nil {
-		utils.Error(ErrDecryptionFailed.Error(), ":%v", err)
+		utils.Fatal(ErrDecryptionFailed.Error(), ":%v", err)
 		return
 	}
 
 	var newPassword []byte
-	var newPasswordGenerated bool
 	var secretProvider providers.SecretProvider
 
 	utils.Info("\n🔐 Setting NEW master password...")
-	response := promptYesNo("Generate a secure password? (y/n): ")
-	if response {
+	if p := os.Getenv("ENV_VAULT_NEW_PASSWORD"); p != "" {
+		newPassword = []byte(p)
+	} else if promptYesNo("Generate a secure password? (y/n): ") {
 		passStr, err := generateSecurePassword(16)
 		if err != nil {
-			utils.Error("Password generation failed: %v", err)
+			utils.Fatal("Password generation failed: %v", err)
 			return
 		}
 		newPassword = []byte(passStr)
-		newPasswordGenerated = true
 		utils.Info("✅ New secure password generated:")
 		fmt.Printf("\n%s\n\n", string(newPassword))
 	} else {
 		p1, err := promptForPassword("Enter new master password: ")
 		if err != nil {
-			utils.Error("Failed to read new password: %v", err)
+			utils.Fatal("Failed to read new password: %v", err)
 			return
 		}
 		p2, err := promptForPassword("Confirm new master password: ")
 		if err != nil {
-			utils.Error("Failed to read confirmation: %v", err)
+			utils.Fatal("Failed to read confirmation: %v", err)
 			return
 		}
 		if !bytes.Equal(p1, p2) {
-			utils.Error("Passwords do not match.")
+			utils.Fatal("Passwords do not match.")
 			return
 		}
 		newPassword = p1
 	}
 
+	if *useBitWarden {
+		secretProvider, err = providers.GetSecretProvider()
+		if err != nil {
+			utils.Fatal(ErrNoSecretProvider.Error(), ":%v", err)
+			return
+		}
+		if err := secretProvider.Set(hashedRepoName, newPassword); err != nil {
+			utils.Fatal("Error saving new password to %s (vault NOT re-encrypted): %v", secretProvider.Name(), err)
+			return
+		}
+		utils.Info("✅ Master password updated in %s.", secretProvider.Name())
+	}
+
 	if err := saveEnv(repoName, plaintext, newPassword); err != nil {
-		utils.Error("Failed to re-encrypt with new password: %v", err)
+		utils.Fatal("Failed to re-encrypt with new password: %v", err)
 		return
 	}
 
-	if newPasswordGenerated && *useBitWarden {
-		if promptYesNo("Save new password to BitWarden Secrets Manager? (y/n): ") {
-			secretProvider, err = providers.GetSecretProvider()
-			if err != nil {
-				utils.Error(ErrNoSecretProvider.Error(), ":%v", err)
-				return
-			}
-			if err := secretProvider.Set(hashedRepoName, newPassword); err != nil {
-				utils.Error("Error saving to %s: %v", secretProvider.Name(), err)
-				return
-			}
-			utils.Info("✅ Master password updated in BitWarden.")
-		}
-	}
+	secureZero(plaintext)
+	secureZero(newPassword)
 
 	utils.Success("✅ Master password rotated successfully for '%s'!", repoName)
 }
 
 func handleVerify() {
-	utils.Info("🔍 Iniciando verificación de integridad para todas las entradas del vault...")
+	utils.Info("🔍 Starting integrity verification for all vault entries...")
 
 	getPasswordFunc := func(hashedKey string) ([]byte, error) {
 		if *useBitWarden {
@@ -466,22 +469,23 @@ func handleVerify() {
 				return nil, fmt.Errorf("no secret provider configured: %w", err)
 			}
 			return secretProvider.Get(hashedKey)
-		} else {
-			prompt := fmt.Sprintf("Enter master password for key %s (required for HMAC check): ", hashedKey)
-			return promptForPassword(prompt)
+		} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
+			return []byte(p), nil
 		}
+		prompt := fmt.Sprintf("Enter master password for key %s (required for HMAC check): ", hashedKey)
+		return promptForPassword(prompt)
 	}
 
 	results, err := VerifyAll(getPasswordFunc)
 	if err != nil {
-		utils.Error("Error al cargar el vault para la verificación: %v", err)
+		utils.Fatal("Error loading vault for verification: %v", err)
 		return
 	}
 
 	successCount := 0
 	failureCount := 0
 
-	utils.Info("\n--- Resultados de la verificación ---")
+	utils.Info("\n--- Verification results ---")
 	for hashedKey, err := range results {
 		status := "✅ OK"
 		if err != nil {
@@ -495,14 +499,14 @@ func handleVerify() {
 		fmt.Printf("Key %s: %s\n", hashedKey, status)
 	}
 
-	utils.Info("\n--- Resumen ---")
-	utils.Info("Éxito: %d", successCount)
-	utils.Info("Fallo: %d", failureCount)
+	utils.Info("\n--- Summary ---")
+	utils.Info("Success: %d", successCount)
+	utils.Info("Failures: %d", failureCount)
 
 	if failureCount > 0 {
-		utils.Warn("\nATENCIÓN: Se detectaron fallos de verificación. Sus datos podrían haber sido manipulados o la contraseña maestra era incorrecta.")
+		utils.Warn("\nATTENTION: verification failures detected. Data may have been tampered with, or the master password was wrong.")
 	} else {
-		utils.Success("🎉 Verificación de integridad completada. Todos los secretos son válidos.")
+		utils.Success("🎉 Integrity verification completed. All secrets are valid.")
 	}
 }
 
@@ -510,13 +514,13 @@ func handleSetupConfig() {
 	utils.Info("🚀 Starting env-vault configuration setup...")
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		utils.Error("Error: Could not determine user configuration directory: %v", err)
+		utils.Fatal("Error: Could not determine user configuration directory: %v", err)
 		return
 	}
 	appConfigDir := filepath.Join(configDir, "env-vault")
 
 	if err := os.MkdirAll(appConfigDir, 0755); err != nil {
-		utils.Error("Error creating config directory: %v", err)
+		utils.Fatal("Error creating config directory: %v", err)
 		return
 	}
 
@@ -553,7 +557,7 @@ LOG_LEVEL=INFO
 	)
 
 	if err := os.WriteFile(configFilePath, []byte(content), 0600); err != nil {
-		utils.Error("Error writing config file: %v", err)
+		utils.Fatal("Error writing config file: %v", err)
 		return
 	}
 
@@ -623,6 +627,9 @@ func printHelp() {
 	fmt.Println("\nOPTIONS:")
 	fmt.Println("  -use-bitwarden  - Use BitWarden to get the master password instead of prompting.")
 	fmt.Println("  -repo=NAME      - Specify repository name (e.g., 'user/repo') for rotate-pass.")
+	fmt.Println("\nENVIRONMENT:")
+	fmt.Println("  ENV_VAULT_PASSWORD      - Master password for non-interactive save/get/verify/rotate.")
+	fmt.Println("  ENV_VAULT_NEW_PASSWORD  - New master password for non-interactive rotate-pass.")
 	fmt.Println("\nMake sure to set the necessary environment variables before using the tool.")
 	fmt.Println("For more information, visit: https://github.com/bulga138/env-vault")
 }
