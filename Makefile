@@ -83,6 +83,16 @@ tidy:
 	$(call log_info, Tidying up Go modules...)
 	@go mod tidy
 
+# Unit + e2e (no external services)
+test:
+	$(call log_info, Running unit and e2e tests...)
+	@go test ./... -count=1
+
+# Integration tests against real Firestore / Bitwarden (uses .env credentials)
+test-integration:
+	$(call log_info, Running integration tests (Firestore + Bitwarden)...)
+	@go test ./... -count=1 -run Integration -v
+
 # --- Command Shortcuts ---
 login:
 	@make run ARGS=login
@@ -118,5 +128,5 @@ setup-bw:
 	@make run ARGS="--use-bitwarden get"
 
 # Declare non-file targets to avoid conflicts
-.PHONY: all build clean run tidy login save get generate-pass sync-save sync-load save-bw get-bw setup-bw verify
+.PHONY: all build clean run tidy test test-integration login save get generate-pass sync-save sync-load save-bw get-bw setup-bw verify
 
