@@ -14,7 +14,7 @@ import (
 )
 
 func deriveKey(password, salt []byte) []byte {
-	return argon2.IDKey(password, salt, 1, 64*1024, 4, 32)
+	return argon2.IDKey(password, salt, 3, 64*1024, 4, 32)
 }
 
 func encrypt(plaintext []byte, key []byte) ([]byte, error) {

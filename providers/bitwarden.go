@@ -86,24 +86,68 @@ func (b *BitwardenProvider) Get(key string) ([]byte, error) {
 
 func (b *BitwardenProvider) Set(key string, value []byte) error {
 	namespacedKey := utils.GetSecretKey(key)
+
+	secretID, err := b.findSecretID(namespacedKey)
+	if err != nil {
+		return err
+	}
+
+	if secretID != "" {
+		cmd := exec.Command("bws", "secret", "edit", secretID, "--value", string(value))
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to update secret in Bitwarden: %s", stderr.String())
+		}
+		return nil
+	}
+
 	cmd := exec.Command("bws", "secret", "create", namespacedKey, string(value), b.projectID)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to save secret to Bitwarden: %s", stderr.String())
 	}
 	return nil
 }
 
-// func (b *BitwardenProvider) namespacedKey(key string) string {
-// 	pepper := os.Getenv("ENV_VAULT_PEPPER")
-// 	hasher := sha256.New()
-// 	hasher.Write([]byte(key))
-// 	if pepper != "" {
-// 		hasher.Write([]byte(pepper))
-// 	}
-// 	hash := hasher.Sum(nil)
-// 	keyHash := base64.URLEncoding.EncodeToString(hash)[:16]
-// 	return fmt.Sprintf("env-vault-%s", keyHash)
-// }
+func (b *BitwardenProvider) Delete(key string) error {
+	namespacedKey := utils.GetSecretKey(key)
+	secretID, err := b.findSecretID(namespacedKey)
+	if err != nil {
+		return err
+	}
+	if secretID == "" {
+		return fmt.Errorf("secret with key '%s' not found", namespacedKey)
+	}
+	cmd := exec.Command("bws", "secret", "delete", secretID)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to delete secret from Bitwarden: %s", stderr.String())
+	}
+	return nil
+}
+
+func (b *BitwardenProvider) findSecretID(namespacedKey string) (string, error) {
+	listCmd := exec.Command("bws", "secret", "list", "--output", "json", b.projectID)
+	var listOut, listStderr bytes.Buffer
+	listCmd.Stdout = &listOut
+	listCmd.Stderr = &listStderr
+
+	if err := listCmd.Run(); err != nil {
+		return "", fmt.Errorf("bws CLI failed during 'list': %s", listStderr.String())
+	}
+
+	var secretList []BwsSecretListItem
+	if err := json.Unmarshal(listOut.Bytes(), &secretList); err != nil {
+		return "", fmt.Errorf("failed to parse secret list: %w", err)
+	}
+
+	for _, secret := range secretList {
+		if secret.Key == namespacedKey {
+			return secret.ID, nil
+		}
+	}
+	return "", nil
+}

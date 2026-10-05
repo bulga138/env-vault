@@ -37,19 +37,39 @@ func initFirestoreClient(ctx context.Context) (*firestore.Client, error) {
 	return client, nil
 }
 
+func firestoreCollection() string {
+	if c := os.Getenv("FIRESTORE_COLLECTION"); c != "" {
+		return c
+	}
+	return "secrets"
+}
+
 func saveSecretToFirebase(ctx context.Context, client *firestore.Client, repoName string, secret StoredEnv) error {
 	docID := utils.GetRepoKey(repoName)
-	_, err := client.Collection("secrets").Doc(docID).Set(ctx, secret)
+	_, err := client.Collection(firestoreCollection()).Doc(docID).Set(ctx, secret)
 	if err != nil {
 		return fmt.Errorf("failed to save secret for '%s' to Firestore: %w", repoName, err)
 	}
 	return nil
 }
 
-func loadSecretsFromFirebase(ctx context.Context, client *firestore.Client) error {
-	localVault := make(vaultData)
+func deleteSecretFromFirebase(ctx context.Context, client *firestore.Client, repoName string) error {
+	docID := utils.GetRepoKey(repoName)
+	_, err := client.Collection(firestoreCollection()).Doc(docID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete secret for '%s' from Firestore: %w", repoName, err)
+	}
+	return nil
+}
 
-	iter := client.Collection("secrets").Documents(ctx)
+func loadSecretsFromFirebase(ctx context.Context, client *firestore.Client) error {
+	localVault, err := loadVault()
+	if err != nil {
+		utils.Warn("Could not load local vault, starting empty: %v", err)
+		localVault = make(vaultData)
+	}
+
+	iter := client.Collection(firestoreCollection()).Documents(ctx)
 	docs, err := iter.GetAll()
 	if err != nil {
 		return fmt.Errorf("failed to fetch documents from Firestore: %w", err)
@@ -75,6 +95,6 @@ func loadSecretsFromFirebase(ctx context.Context, client *firestore.Client) erro
 		return fmt.Errorf("failed to write secrets to local vault.json: %w", err)
 	}
 
-	utils.Success("Loaded %d secrets from Firestore into vault.json.", loadedCount)
+	utils.Success("Merged %d secrets from Firestore into local vault.json.", loadedCount)
 	return nil
 }
