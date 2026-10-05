@@ -6,13 +6,13 @@
 
 ## 🌟 Features
 
-  - 🔐 **Strong Encryption**: Uses Argon2 key derivation and **AES-256-GCM** 
+  - 🔐 **Strong Encryption**: Uses Argon2 key derivation and **AES-256-GCM**
   - 🛡️ **Integrity Verification**: Command to verify that secrets haven't been tampered with (`verify`)
-  - 🔑 **Secret Providers**: Integrates with **Bitwarden Secrets Manager** for automatic password fetching. 
-  - 🔄 **Git Integration**: Automatically detects repository context (`user/repo` format) 
-  - ☁️ **Cloud Sync**: Optional backend integration with Google Firestore 
+  - 🔑 **Secret Providers**: Integrates with **Bitwarden Secrets Manager** for automatic password fetching.
+  - 🔄 **Git Integration**: Automatically detects repository context (`user/repo` format)
+  - ☁️ **Cloud Sync**: Optional backend integration with Google Firestore
   - 📱 **Cross-Platform**: Works on Windows, macOS, and Linux
-  - 🔒 **Secure Storage**: Uses local vault with file locking and audit logs 
+  - 🔒 **Secure Storage**: Uses local vault with file locking and audit logs
 
 -----
 
@@ -20,13 +20,13 @@
 
 ### Pre-compiled binaries
 
-Download the latest release from [GitHub Releases](https://github.com/yourusername/env-vault/releases)
+Download the latest release from the **GitHub Releases** page.
 
 ### From source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/env-vault.git
+git clone [https://github.com/yourusername/env-vault.git](https://github.com/yourusername/env-vault.git)
 cd env-vault
 
 # Build the project (requires Go 1.24+)
@@ -40,118 +40,125 @@ go install .
 
 ## 🚀 Quick Start
 
-El flujo más seguro y recomendado es usar un proveedor de secretos externo (como Bitwarden) para almacenar la clave maestra de tu vault.
+The most secure and recommended flow is to use an external secret provider (like Bitwarden) to store your vault's master key.
 
-### 1\. Configuración de Bitwarden (Recomendado)
+### 1\. Bitwarden Configuration (Recommended)
 
-Sigue los pasos para configurar tu cuenta y obtener tu **ID de proyecto de Bitwarden Secrets Manager**.
+Follow the steps to set up your account and obtain your **Bitwarden Secrets Manager Project ID**.
 
 ```bash
-# Exporta el ID de tu proyecto de Bitwarden
+# Export your Bitwarden Project ID
 export BWS_PROJECT_ID="your_bitwarden_project_id"
 
-# Asegúrate de tener el CLI 'bws' autenticado
+# Ensure the 'bws' CLI is authenticated
 bws login
 ```
 
-### 2\. Guardar y Sincronizar un Nuevo Secreto
+### 2\. Save and Sync a New Secret
 
-Para añadir un nuevo archivo `.env` a tu vault:
+To add a new `.env` file to your vault:
 
 ```bash
-# Asegúrate de que tu archivo .env esté en el directorio actual
+# Ensure your .env file is in the current directory
 cd /path/to/your/project
 
-# Guardar y usar Bitwarden (guarda el secreto localmente y la clave en Bitwarden)
-# Si no existe una clave para este repo, se generará una nueva y te preguntará
-# si quieres guardarla en Bitwarden.
+# Save and use Bitwarden (saves the secret locally and the key in Bitwarden)
+# If a key for this repo doesn't exist, a new one will be generated, and you
+# will be prompted to save it in Bitwarden.
 env-vault save --use-bitwarden
 
-# Opcional: Sincronizar el secreto cifrado con Firestore
+# Optional: Synchronize the encrypted secret with Firestore
 env-vault sync-save
 ```
 
-### 3\. Obtener un Secreto en una Máquina Nueva
+### 3\. Retrieve a Secret on a New Machine
 
-Para obtener secretos en un nuevo entorno (asumiendo que tienes configurado Bitwarden):
+To retrieve secrets in a new environment (assuming you have Bitwarden configured):
 
 ```bash
 cd /path/to/your/project
 
-# Obtiene la clave de Bitwarden, descifra el secreto local (vault.json) y crea el .env
+# Retrieves the key from Bitwarden, decrypts the local secret (vault.json), and creates the .env file
 env-vault get --use-bitwarden
 
-# Si se encuentra un .env existente, se guardará como .env.recovered.
+# If an existing .env is found, it will be saved as .env.recovered.
 ```
 
 -----
 
-## 📖 Uso y Comandos
+## 📖 Usage and Commands
 
 ```bash
 env-vault <command>
 ```
 
-| Comando | Descripción |
+| Command | Description |
 |:---|:---|
-| `save` | Cifra y almacena el archivo `.env` para el repositorio actual. |
-| `get` | Recupera y descifra el archivo `.env` para el repositorio actual. |
-| `rotate-pass` | Rota la contraseña maestra para el repositorio actual. Útil para actualizar la clave de Bitwarden. |
-| `generate-pass` | Genera una nueva contraseña maestra segura de 16 caracteres. |
-| `verify` | Verifica la integridad HMAC de todos los secretos en `vault.json` (requiere la contraseña). |
-| `sync-save` | Sube el secreto cifrado para el repo actual a Firestore. |
-| `sync-load` | Descarga todos los secretos de Firestore al vault local. |
+| `save` | Encrypts and stores the `.env` file for the current repository. |
+| `get` | Retrieves and decrypts the `.env` file for the current repository. |
+| `rotate-pass` | Rotates the master password for the current repository. Useful for updating the key in Bitwarden. |
+| `generate-pass` | Generates a new, secure 16-character master password. |
+| `verify` | Verifies the HMAC integrity of all secrets in `vault.json` (requires the password). |
+| `sync-save` | Uploads the encrypted secret for the current repo to Firestore. |
+| `sync-load` | Downloads all secrets from Firestore and merges them into the local vault. |
 
-### Opciones Globales
+### Global Options
 
-| Opción | Descripción |
+| Option | Description |
 |:---|:---|
-| `--use-bitwarden` | Utiliza Bitwarden para obtener la contraseña maestra en lugar de solicitarla. |
-| `--repo=NAME` | Especifica el nombre del repositorio (p. ej., `user/repo`) para `rotate-pass`. |
+| `--use-bitwarden` | Uses Bitwarden to fetch the master password instead of prompting for it. |
+| `--repo=NAME` | Specifies the repository name (e.g., `user/repo`) for commands like `rotate-pass`. |
+
+### Environment Variables (non-interactive)
+
+| Variable | Description |
+|:---|:---|
+| `ENV_VAULT_PASSWORD` | Master password for `save` / `get` / `verify` / `rotate-pass` (skips the prompt). Useful for CI. |
+| `ENV_VAULT_NEW_PASSWORD` | New master password for non-interactive `rotate-pass`. |
 
 -----
 
-## 🔧 Configuración de Proveedores
+## 🔧 Provider Configuration
 
-`env-vault` requiere que se defina al menos un método para obtener la contraseña maestra: de forma manual o a través de un proveedor de secretos.
+`env-vault` requires you to define at least one method to obtain the master password: manually or through a secret provider.
 
 ### 🔑 Bitwarden Secrets Manager
 
-`env-vault` utiliza el Bitwarden CLI (`bws`) para gestionar la contraseña maestra del vault.
+`env-vault` uses the Bitwarden CLI (`bws`) to manage the vault's master password.
 
-| Variable | Descripción | Requerido |
+| Variable | Description | Required |
 |:---|:---|:----:|
-| `BWS_PROJECT_ID` | El ID del proyecto de Bitwarden Secrets Manager donde se almacenarán las claves.  | ✅ Sí |
+| `BWS_PROJECT_ID` | The Bitwarden Secrets Manager Project ID where the keys will be stored. | ✅ Yes |
 
-El secreto se almacena en Bitwarden bajo una clave con el formato `env-vault-<hash-del-repo>`.
+The secret is stored in Bitwarden under a key with the format `env-vault-<repo-hash>`.
 
-### ☁️ Google Firestore (Sincronización de Vault)
+### ☁️ Google Firestore (Vault Synchronization)
 
-Para la sincronización del vault cifrado, debes configurar la autenticación de Google Cloud.
+For encrypted vault synchronization, you must configure Google Cloud authentication.
 
-| Variable | Descripción | Requerido |
+| Variable | Description | Required |
 |:---|:---|:----:|
-| `GOOGLE_APPLICATION_CREDENTIALS` | Ruta al archivo JSON de la clave de la cuenta de servicio de Google Cloud. | ✅ Sí (para `sync-save`/`sync-load`) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to the Google Cloud service account key JSON file. | ✅ Yes (for `sync-save`/`sync-load`) |
 
-**Nota Importante:** El código original mencionaba credenciales de GitHub para `login`. Dado que no se incluyó la función `login` en el código, hemos eliminado las variables `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET`. **El flujo de trabajo actual asume autenticación manual o a través de Bitwarden/Firestore, no de GitHub OAuth.**
+**Note on Authentication:** The current workflow is designed for manual authentication or using the integrated Bitwarden/Firestore providers.
 
 -----
 
-## 🔒 Seguridad
+## 🔒 Security
 
-  - 🔑 Las contraseñas maestras nunca se almacenan en el disco. Se limpian de la memoria (`secureZero`) inmediatamente después de usarse. 
-  - 🛡️ **Verificación HMAC:** Cada secreto tiene un HMAC verificado con la clave maestra para asegurar la integridad y detectar la manipulación. 
-  - 🔐 El archivo `vault.json` utiliza permisos restringidos (0600) y bloqueo de archivos (`flock`) durante la escritura. 
-  - 🔄 Cada entrada utiliza un **salt único** para la derivación de claves Argon2id, haciendo que cada descifrado sea resistente. 
+  - 🔑 Master passwords are never stored on disk. They are securely cleared from memory (`secureZero`) immediately after use.
+  - 🛡️ **HMAC Verification:** Each secret has an HMAC verified with the master key to ensure integrity and detect tampering.
+  - 🔐 The `vault.json` file uses restricted permissions (0600) and file locking (`flock`) during writing.
+  - 🔄 Each entry uses a **unique salt** for Argon2id key derivation, making each decryption resistant.
 
 -----
 
-## 🛠️ Desarrollo
+## 🛠️ Development
 
-### Prerrequisitos
+### Prerequisites
 
   - Go 1.24+
-  - Make (opcional, para comandos de build)
+  - Make (optional, for build commands)
 
 ### Building
 
@@ -159,15 +166,23 @@ Para la sincronización del vault cifrado, debes configurar la autenticación de
 # Standard build
 make build
 
-# Build y corre un comando de ejemplo
+# Build and run an example command
 make run ARGS="save"
 ```
 
 ### Running Tests
 
 ```bash
+# Unit + e2e (temp git repos, no external services)
 go test ./...
+# or
+make test
+
+# Integration tests against real Firestore + Bitwarden (uses credentials from .env)
+make test-integration
 ```
+
+Integration tests skip automatically when credentials/CLI are missing. Firestore writes use `FIRESTORE_COLLECTION` (default `secrets`; tests set `env-vault-e2e`). Bitwarden secrets are created under unique keys and deleted afterwards.
 
 ## 🤝 Contributing
 
@@ -179,10 +194,10 @@ go test ./...
 
 ## 📄 License
 
-MIT License - see [LICENSE](https://www.google.com/search?q=./LICENSE) file
+MIT License - see the [**LICENSE**](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-  - **Argon2id** for robust key derivation 
-  - **AES-256-GCM** for strong encryption 
-  - **Google Cloud** for Firestore integration 
+  - **Argon2id** for robust key derivation
+  - **AES-256-GCM** for strong encryption
+  - **Google Cloud** for Firestore integration
