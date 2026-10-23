@@ -34,7 +34,7 @@ This document outlines the major enterprise-level features to be developed for `
 - [x] **Secure memory handling (memguard)**
   - Lock password/key bytes in memory and prevent swapping.
 
-- [ ] **Recovery phrases (BIP39 mnemonic)**
+- [x] **Recovery phrases (BIP39 mnemonic)**
   - Generate and recover master keys from a mnemonic seed phrase.
 
 - [ ] **Peer-to-peer sync (relay/rendezvous)**

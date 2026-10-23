@@ -133,6 +133,8 @@ func main() {
 		handleAudit()
 	case "keyring":
 		handleKeyring()
+	case "mnemonic":
+		handleMnemonic()
 	case "backup":
 		handleBackup()
 	case "restore":
