@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"golang.org/x/term"
 )
@@ -50,6 +52,33 @@ func TerminalWidth() int {
 	return w
 }
 
+// StartSpinner shows an animated spinner using beNotAfraid.txt characters (or a
+// default set) on stderr while a long-running operation executes. It returns a
+// stop function that clears the line.
+func StartSpinner(label string) func() {
+	done := make(chan struct{})
+	go func() {
+		chars := loadSpinnerChars()
+		i := 0
+		for {
+			select {
+			case <-done:
+				fmt.Fprintf(os.Stderr, "\r\033[K")
+				return
+			default:
+			}
+			ch := chars[i%len(chars)]
+			fmt.Fprintf(os.Stderr, "\r%s %s", Cyan(string(ch)), label)
+			i++
+			time.Sleep(120 * time.Millisecond)
+		}
+	}()
+	return func() {
+		close(done)
+		time.Sleep(130 * time.Millisecond)
+	}
+}
+
 // PrintBanner prints a small colored banner header followed by content.
 func PrintBanner(name string, content string) {
 	fmt.Println(Cyan(Bold("== " + name + " ==")))
@@ -57,4 +86,18 @@ func PrintBanner(name string, content string) {
 	if len(content) > 0 && content[len(content)-1] != '\n' {
 		fmt.Println()
 	}
+}
+
+// loadSpinnerChars reads spinner characters from beNotAfraid.txt when available.
+func loadSpinnerChars() []rune {
+	candidates := []string{"beNotAfraid.txt"}
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "beNotAfraid.txt"))
+	}
+	for _, p := range candidates {
+		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
+			return []rune(string(data))
+		}
+	}
+	return []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 }

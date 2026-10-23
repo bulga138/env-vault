@@ -14,6 +14,8 @@ import (
 	"syscall"
 
 	"golang.org/x/term"
+
+	"github.com/bulga138/env-vault/utils"
 )
 
 const (
@@ -24,6 +26,9 @@ const (
 )
 
 func getCurrentRepoName() (string, error) {
+	stop := utils.StartSpinner("Detecting repository")
+	defer stop()
+
 	cmd := exec.Command("git", "remote", "get-url", "origin")
 	output, err := cmd.Output()
 	if err == nil {

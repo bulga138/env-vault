@@ -183,7 +183,10 @@ func handleSyncSave() {
 		return
 	}
 
-	if err := provider.Save(ctx, repoName, secret); err != nil {
+	stop := utils.StartSpinner("Saving to " + provider.Name())
+	err = provider.Save(ctx, repoName, secret)
+	stop()
+	if err != nil {
 		logAudit("sync-save", repoName, false, fmt.Sprintf("Error saving to %s: %v", provider.Name(), err))
 		utils.Fatal("Error saving to %s: %v", provider.Name(), err)
 		return
