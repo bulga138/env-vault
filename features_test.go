@@ -136,3 +136,58 @@ func TestSQLiteSyncProvider(t *testing.T) {
 		t.Fatalf("expected 0, got %d", len(all))
 	}
 }
+
+func TestResolveConflict(t *testing.T) {
+	local := StoredEnv{Ciphertext: "local", TimeStamp: 5}
+	remote := StoredEnv{Ciphertext: "remote", TimeStamp: 10}
+
+	r, upd, conf := resolveConflict("newest", local, remote)
+	if r.Ciphertext != "remote" || !upd || conf {
+		t.Fatalf("newest remote-newer: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+	r, upd, conf = resolveConflict("newest", remote, local)
+	if r.Ciphertext != "remote" || upd || conf {
+		t.Fatalf("newest local-newer: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+	eq := StoredEnv{Ciphertext: "x", TimeStamp: 5}
+	r, upd, conf = resolveConflict("newest", local, eq)
+	if r.Ciphertext != "local" || upd || !conf {
+		t.Fatalf("newest conflict: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+	r, upd, conf = resolveConflict("remote", local, remote)
+	if r.Ciphertext != "remote" || !upd || conf {
+		t.Fatalf("remote: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+	r, upd, conf = resolveConflict("local", local, remote)
+	if r.Ciphertext != "local" || upd || conf {
+		t.Fatalf("local: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+	r, upd, conf = resolveConflict("skip", local, remote)
+	if r.Ciphertext != "local" || upd || !conf {
+		t.Fatalf("skip diff: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+	same := StoredEnv{Ciphertext: "local", TimeStamp: 10}
+	r, upd, conf = resolveConflict("skip", local, same)
+	if r.Ciphertext != "local" || upd || conf {
+		t.Fatalf("skip same: got %v %v %v", r.Ciphertext, upd, conf)
+	}
+}
+
+func TestAuditLogReadWrite(t *testing.T) {
+	setTempConfigDir(t)
+	logAudit("test-action", "repo", true, "")
+	logAudit("test-action", "repo", false, "boom")
+	entries, err := readAuditEntries()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(entries))
+	}
+	if entries[0].Action != "test-action" || !entries[0].Success {
+		t.Fatal("first entry mismatch")
+	}
+	if entries[1].Success || entries[1].ErrorMessage != "boom" {
+		t.Fatal("second entry mismatch")
+	}
+}
