@@ -598,13 +598,13 @@ LOG_LEVEL=INFO
 		return
 	}
 
-	utils.Success("\n✅ Configuration file created successfully at:")
+	utils.Success("\nConfiguration file created successfully at:")
 	fmt.Printf("   %s\n\n", configFilePath)
 
 	configCommand := fmt.Sprintf("export ENV_VAULT_CONFIG_PATH=\"%s\"", configFilePath)
 	shellName := getShellName()
 
-	utils.Info("⚠️ Final Step: Load Configuration")
+	utils.Info("Final Step: Load Configuration")
 	utils.Warn("You need to add the following line to your shell startup file.")
 
 	switch shellName {
@@ -624,7 +624,7 @@ LOG_LEVEL=INFO
 
 	shellConfigPath := getShellConfigPath()
 	if shellConfigPath != "" && shellName != "powershell" {
-		utils.Info("⚠️ Final Step: Load Configuration")
+	utils.Info("Final Step: Load Configuration")
 		utils.Warn("You need to add the following line to your shell startup file:")
 
 		fmt.Printf("\nexport ENV_VAULT_CONFIG_PATH=\"%s\"\n", configFilePath)
@@ -638,8 +638,8 @@ LOG_LEVEL=INFO
 		} else {
 			utils.Success("\nShell config file opened. Complete the step and then restart your terminal.")
 		}
-	} else {
-		utils.Info("⚠️ Final Step: Load Configuration")
+	} else if shellName != "powershell" {
+	utils.Info("Final Step: Load Configuration")
 		utils.Warn("Could not automatically detect your shell configuration file.")
 		utils.Warn("Please add the following line to your shell's startup file (e.g., ~/.bashrc, ~/.zshrc):")
 		fmt.Printf("\nexport ENV_VAULT_CONFIG_PATH=\"%s\"\n\n", configFilePath)
