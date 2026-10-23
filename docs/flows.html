@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>env-vault — Flows</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #ffffff; --fg: #24292f; --muted: #57606a; --border: #d0d7de; --code: #f6f8fa; --accent: #0969da; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); margin: 0; line-height: 1.6; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+    header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 2rem; }
+    h1 { margin: 0; font-size: 2rem; }
+    h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: var(--code); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
+    pre { background: var(--code); padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    .mermaid { text-align: center; margin: 2rem 0; }
+    footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>env-vault — Flows</h1>
+    <p><a href="index.html">← Back to docs</a></p>
+  </header>
+
+  <h2>Save / Get Flow</h2>
+  <div class="mermaid">
+flowchart TD
+  A[Run env-vault save] --> B{Prompt for password?}
+  B -->|New repo| C[Generate secure password]
+  B -->|Existing repo| D[Prompt for existing password]
+  C --> E[Encrypt .env -> vault.json]
+  D --> E
+  E --> F[Run env-vault get]
+  F --> G[Decrypt with same password]
+  G --> H[Compare .env.recovered vs original]
+  H -->|Match| I[Success]
+  H -->|Mismatch| J[Corruption / key error]
+  </div>
+
+  <h2>Sync-Load Flow</h2>
+  <div class="mermaid">
+flowchart TD
+  A[Run env-vault sync-load] --> B[Fetch from backend]
+  B --> C{Conflict?}
+  C -->|Yes| D[Apply sync-strategy]
+  C -->|No| E[Merge into local vault]
+  D --> E
+  E --> F[Verify HMAC integrity]
+  F -->|OK| G[Success]
+  F -->|Fail| H[Tampering detected]
+  </div>
+
+  <footer>
+    <p>MIT License — <a href="https://github.com/bulga138/env-vault">GitHub</a></p>
+  </footer>
+</div>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>
