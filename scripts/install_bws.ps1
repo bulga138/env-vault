@@ -133,6 +133,7 @@ try {
             Write-Host "     - $($_.tag_name): $($_.name)"
         }
         $latestRelease = $allReleases | Sort-Object -Property created_at -Descending | Where-Object { $_.name -like '*CLI*' } | Select-Object -First 1
+        $latestVersion = $latestRelease.tag_name
         Write-Host "`n--- Latest release: $($latestRelease.tag_name) ---"
         $latestRelease.assets | ForEach-Object {
             Write-Host "  • $($_.name)   ($([math]::Round($_.size/1KB,2)) KB)"
@@ -158,10 +159,12 @@ try {
         # -----------------------------------------------------------------
         # 1️⃣ First pass – Filter Windows MSVC build and its checksum
         # -----------------------------------------------------------------
-        $downloadAsset = $latestRelease.assets | Where-Object { $_.name -like "bws-*-pc-windows-msvc*.zip" } | Select-Object -First 1
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64' } else { 'x86_64' }
+        $assetPattern = "bws-$arch-pc-windows-msvc*.zip"
+        $downloadAsset = $latestRelease.assets | Where-Object { $_.name -like $assetPattern } | Select-Object -First 1
         if (-not $downloadAsset) {
             Write-Warning "❌ Could not locate a Windows MSVC build ZIP in the latest release. Trying with previous version."
-            $downloadAsset = $allReleases | Where-Object { $_.name -like "bws-*-pc-windows-msvc*.zip" } | Select-Object -First 1
+            $downloadAsset = $allReleases | ForEach-Object { $_.assets } | Where-Object { $_.name -like $assetPattern } | Select-Object -First 1
             if (-not $downloadAsset) {
                 throw "❌ Could not find any Windows MSVC build ZIP in any recent release."
             }
