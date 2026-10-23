@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -118,6 +117,8 @@ func main() {
 		handleRotatePassword()
 	case "setup-config":
 		handleSetupConfig()
+	case "users":
+		handleUsers()
 	default:
 		printHelp()
 	}
@@ -291,68 +292,6 @@ func handleGeneratePassword() {
 	utils.Info("Copy this password and store it in a safe place (like a password manager).")
 }
 
-func handleSyncSave() {
-	utils.Info("☁️  Saving current repo's secret to Firestore...")
-	ctx := context.Background()
-
-	client, err := initFirestoreClient(ctx)
-	if err != nil {
-		utils.Fatal("Error: Could not connect to Firebase: %v", err)
-		return
-	}
-	defer client.Close()
-
-	repoName, err := getCurrentRepoName()
-	if err != nil {
-		logAudit("sync-save", "", false, fmt.Sprintf("Failed to get repository name: %v", err))
-		utils.Fatal("Error getting repo name: %v", err)
-		return
-	}
-
-	vault, err := loadVault()
-	if err != nil {
-		logAudit("sync-save", repoName, false, fmt.Sprintf("Error loading local vault: %v", err))
-		utils.Fatal("Error loading local vault: %v", err)
-		return
-	}
-
-	hashedRepoName := utils.GetRepoKey(repoName)
-	secret, ok := vault[hashedRepoName]
-	if !ok {
-		utils.Fatal("Error: No secret found for '%s' in local vault.json. Please run 'save' first.", repoName)
-		logAudit("sync-save", repoName, false, "No secret found for repository in local vault.json.")
-		return
-	}
-
-	if err := saveSecretToFirebase(ctx, client, repoName, secret); err != nil {
-		logAudit("sync-save", repoName, false, fmt.Sprintf("Error saving to Firestore: %v", err))
-		utils.Fatal("Error saving to Firestore: %v", err)
-		return
-	}
-
-	logAudit("sync-save", repoName, true, "")
-	utils.Info("✅ Secret for '%s' successfully saved to Firestore.", repoName)
-}
-
-func handleSyncLoad() {
-	utils.Info("☁️  Loading all secrets from Firestore to local vault.json...")
-	ctx := context.Background()
-
-	client, err := initFirestoreClient(ctx)
-	if err != nil {
-		logAudit("sync-load", "", false, fmt.Sprintf("Could not connect to Firebase: %v", err))
-		utils.Fatal("Error: Could not connect to Firebase: %v", err)
-		return
-	}
-	defer client.Close()
-
-	if err := loadSecretsFromFirebase(ctx, client); err != nil {
-		logAudit("sync-load", "", false, fmt.Sprintf("Error loading from Firestore: %v", err))
-		utils.Fatal("Error loading from Firestore: %v", err)
-		return
-	}
-	logAudit("sync-load", "", true, "")
-}
 
 func handleRotatePassword() {
 	utils.Info("🔄 Rotating master password for repository...")
@@ -629,6 +568,62 @@ LOG_LEVEL=INFO
 
 	utils.Info("Then, restart your terminal or run 'source [your shell config file]'.")
 	utils.Success("Setup complete! You can now run 'env-vault save' in any Git repository.")
+}
+
+func handleUsers() {
+	if flag.NArg() < 2 {
+		fmt.Println("Usage: env-vault users <list|add|remove> [args]")
+		return
+	}
+	sub := flag.Arg(1)
+	switch sub {
+	case "list":
+		users, err := ListUsers()
+		if err != nil {
+			utils.Fatal("Error listing users: %v", err)
+			return
+		}
+		if len(users) == 0 {
+			utils.Info("No users registered.")
+			return
+		}
+		for _, u := range users {
+			fmt.Printf("%-20s %-12s %s\n", u.Name, u.Role, u.CreatedAt.Format(time.RFC3339))
+		}
+		logAudit("users-list", "", true, "")
+	case "add":
+		if flag.NArg() < 3 {
+			fmt.Println("Usage: env-vault users add <name> [role]")
+			return
+		}
+		name := flag.Arg(2)
+		role := "member"
+		if flag.NArg() >= 4 {
+			role = flag.Arg(3)
+		}
+		if err := AddUser(name, role); err != nil {
+			logAudit("users-add", "", false, err.Error())
+			utils.Fatal("Error adding user: %v", err)
+			return
+		}
+		logAudit("users-add", "", true, "")
+		utils.Success("User %q added with role %q.", name, role)
+	case "remove":
+		if flag.NArg() < 3 {
+			fmt.Println("Usage: env-vault users remove <name>")
+			return
+		}
+		name := flag.Arg(2)
+		if err := RemoveUser(name); err != nil {
+			logAudit("users-remove", "", false, err.Error())
+			utils.Fatal("Error removing user: %v", err)
+			return
+		}
+		logAudit("users-remove", "", true, "")
+		utils.Success("User %q removed.", name)
+	default:
+		fmt.Println("Unknown users subcommand. Use list, add, or remove.")
+	}
 }
 
 func printHelp() {

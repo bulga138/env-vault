@@ -1,3 +1,5 @@
+//go:build cloud
+
 package main
 
 import (
