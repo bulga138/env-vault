@@ -49,15 +49,15 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 	}
 
 	auditDir := filepath.Join(configDir, "env-vault", "audit")
-	if err := os.MkdirAll(auditDir, 0755); err != nil {
+	if err := os.MkdirAll(auditDir, 0700); err != nil {
 		utils.Warn("Could not create audit directory: %v", err)
 		return
 	}
 
 	auditFile := filepath.Join(auditDir, "audit.log")
 
-	// Append to audit log
-	f, err := os.OpenFile(auditFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// Append to audit log (restricted permissions)
+	f, err := os.OpenFile(auditFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		utils.Warn("Could not open audit log file: %v", err)
 		return
@@ -135,6 +135,7 @@ func handleSave() {
 
 	vault, err := loadVault()
 	if err != nil {
+		logAudit("save", repoName, false, fmt.Sprintf("Error loading vault: %v", err))
 		utils.Fatal("Error loading vault: %v", err)
 		return
 	}
@@ -169,6 +170,7 @@ func handleSave() {
 
 	if passErr != nil {
 		defer secureZero(password)
+		logAudit("save", repoName, false, fmt.Sprintf("Password error: %v", passErr))
 		utils.Fatal("Password error: %v", passErr)
 		return
 	}
@@ -196,6 +198,7 @@ func handleSave() {
 
 	content, err := os.ReadFile(".env")
 	if err != nil {
+		logAudit("save", repoName, false, fmt.Sprintf("Error reading '.env' file: %v", err))
 		utils.Fatal("Error reading '.env' file: %v", err)
 		return
 	}
@@ -225,6 +228,7 @@ func handleGet() {
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
+		logAudit("get", "", false, fmt.Sprintf("Failed to get repository name: %v", err))
 		utils.Fatal("Error getting repo name: %v", err)
 		return
 	}
@@ -256,6 +260,7 @@ func handleGet() {
 
 	content, err := getEnv(repoName, password)
 	if err != nil {
+		logAudit("get", repoName, false, fmt.Sprintf("Error getting .env from vault: %v", err))
 		utils.Fatal("Error getting .env from vault: %v", err)
 		return
 	}
@@ -269,6 +274,7 @@ func handleGet() {
 	}
 
 	utils.Info(".env file for '%s' recovered and saved as '%s'!", repoName, outputFilename)
+	logAudit("get", repoName, true, "")
 }
 
 func handleGeneratePassword() {
@@ -298,12 +304,14 @@ func handleSyncSave() {
 
 	repoName, err := getCurrentRepoName()
 	if err != nil {
+		logAudit("sync-save", "", false, fmt.Sprintf("Failed to get repository name: %v", err))
 		utils.Fatal("Error getting repo name: %v", err)
 		return
 	}
 
 	vault, err := loadVault()
 	if err != nil {
+		logAudit("sync-save", repoName, false, fmt.Sprintf("Error loading local vault: %v", err))
 		utils.Fatal("Error loading local vault: %v", err)
 		return
 	}
@@ -317,10 +325,12 @@ func handleSyncSave() {
 	}
 
 	if err := saveSecretToFirebase(ctx, client, repoName, secret); err != nil {
+		logAudit("sync-save", repoName, false, fmt.Sprintf("Error saving to Firestore: %v", err))
 		utils.Fatal("Error saving to Firestore: %v", err)
 		return
 	}
 
+	logAudit("sync-save", repoName, true, "")
 	utils.Info("✅ Secret for '%s' successfully saved to Firestore.", repoName)
 }
 
@@ -330,15 +340,18 @@ func handleSyncLoad() {
 
 	client, err := initFirestoreClient(ctx)
 	if err != nil {
+		logAudit("sync-load", "", false, fmt.Sprintf("Could not connect to Firebase: %v", err))
 		utils.Fatal("Error: Could not connect to Firebase: %v", err)
 		return
 	}
 	defer client.Close()
 
 	if err := loadSecretsFromFirebase(ctx, client); err != nil {
+		logAudit("sync-load", "", false, fmt.Sprintf("Error loading from Firestore: %v", err))
 		utils.Fatal("Error loading from Firestore: %v", err)
 		return
 	}
+	logAudit("sync-load", "", true, "")
 }
 
 func handleRotatePassword() {
@@ -352,6 +365,7 @@ func handleRotatePassword() {
 	} else {
 		repoName, err = getCurrentRepoName()
 		if err != nil {
+			logAudit("rotate-pass", "", false, fmt.Sprintf("Failed to detect repository name: %v", err))
 			utils.Fatal("Failed to detect repository name: %v", err)
 			return
 		}
@@ -359,12 +373,14 @@ func handleRotatePassword() {
 
 	vault, err := loadVault()
 	if err != nil {
+		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Error loading vault: %v", err))
 		utils.Fatal("Error loading vault: %v", err)
 		return
 	}
 
 	hashedRepoName := utils.GetRepoKey(repoName)
 	if _, exists := vault[hashedRepoName]; !exists {
+		logAudit("rotate-pass", repoName, false, "No entry found for repository in vault.")
 		utils.Fatal("No entry found for repository '%s' in vault. Run 'save' first.", repoName)
 		return
 	}
@@ -398,6 +414,7 @@ func handleRotatePassword() {
 
 	plaintext, err := getEnv(repoName, oldPassword)
 	if err != nil {
+		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Decryption failed: %v", err))
 		utils.Fatal(ErrDecryptionFailed.Error(), ":%v", err)
 		return
 	}
@@ -449,6 +466,7 @@ func handleRotatePassword() {
 	}
 
 	if err := saveEnv(repoName, plaintext, newPassword); err != nil {
+		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Failed to re-encrypt: %v", err))
 		utils.Fatal("Failed to re-encrypt with new password: %v", err)
 		return
 	}
@@ -456,6 +474,7 @@ func handleRotatePassword() {
 	secureZero(plaintext)
 	secureZero(newPassword)
 
+	logAudit("rotate-pass", repoName, true, "")
 	utils.Success("✅ Master password rotated successfully for '%s'!", repoName)
 }
 

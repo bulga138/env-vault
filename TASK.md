@@ -9,7 +9,7 @@ This document outlines the major enterprise-level features to be developed for `
 - [ ] **Team-Based Access Control (ACL)**
   - Implement a system for creating teams and assigning roles (e.g., `admin`, `member`, `read-only`). Secrets should be shareable and accessible based on team membership and permissions.
 
-- [ ] **Audit Logging**
+- [x] **Audit Logging**
   - Create a secure, append-only log that records all critical actions. This includes who accessed a secret, who updated a secret, user logins, and administrative changes.
 
 - [ ] **Cloud Backup & Synchronization**
