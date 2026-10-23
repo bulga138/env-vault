@@ -137,6 +137,12 @@ func main() {
 		handleRestore()
 	case "banner":
 		handleBanner()
+	case "p2p", "peer", "relay":
+		handleP2P()
+	case "admin":
+		if err := runAdminTUI(); err != nil {
+			fmt.Printf("Admin dashboard error: %v\n", err)
+		}
 	default:
 		printHelp()
 	}
@@ -751,13 +757,13 @@ func handleACL() {
 }
 
 func handleBanner() {
-	name := "owl"
+	name := "beNotAfraid.txt"
 	if flag.NArg() > 1 {
 		name = flag.Arg(1)
 	}
 	candidates := []string{name}
-	if name == "owl" {
-		candidates = []string{"owl", "throne.txt", "beNotAfraid.txt"}
+	if name == "beNotAfraid.txt" {
+		candidates = []string{"beNotAfraid.txt"}
 	}
 
 	var data []byte
@@ -790,7 +796,16 @@ func printHelp() {
 	fmt.Println("  generate-pass - Generate a new secure master password.")
 	fmt.Println("  sync-save     - Save the current repo's secret to Firestore.")
 	fmt.Println("  sync-load     - Load all secrets from Firestore to vault.json.")
-	fmt.Println("  banner [file] - Print an ASCII art banner from a local file (owl, throne.txt, beNotAfraid.txt).")
+	fmt.Println("  users         - Manage vault users (list/add/remove).")
+	fmt.Println("  acl           - Manage per-repo access control.")
+	fmt.Println("  audit         - View audit logs.")
+	fmt.Println("  keyring       - Manage OS keyring entries.")
+	fmt.Println("  mnemonic      - Generate or recover a BIP39 recovery phrase.")
+	fmt.Println("  backup        - Create a rotated backup of the vault.")
+	fmt.Println("  restore       - Restore a vault backup.")
+	fmt.Println("  p2p           - Peer-to-peer sync via relay/rendezvous.")
+	fmt.Println("  banner        - Print the local beNotAfraid.txt ASCII art.")
+	fmt.Println("  admin         - Terminal dashboard for users, ACL, and audit logs.")
 	fmt.Println("  rotate-pass   - Rotate the master password for the current (or specified) repository.")
 	fmt.Println("  verify        - Verify the integrity of all secrets in vault.json (requires master password).")
 	fmt.Println("  setup-config  - Interactive setup for env-vault configuration.")

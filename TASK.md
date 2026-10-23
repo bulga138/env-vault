@@ -17,8 +17,8 @@ This document outlines planned features for `env-vault`. Each item represents a 
 - Pluggable sync backends: `file` (default), `sqlite`, `firestore`, and `p2p`/`peer`/`relay`/`rendezvous`.
 - Current cloud backend is Firestore only; S3/GCS are not yet implemented.
 
-- [ ] **Admin Dashboard (Web UI)**
-- Develop a web-based dashboard for administrators to manage users, teams, and view audit logs.
+- [x] **Admin Dashboard (TUI)**
+- Terminal dashboard for users, ACL entries, and recent audit logs (Bubble Tea). Web UI remains a future option.
 
 - [x] **User Management System** (basic local registry)
 - Build functionality for inviting new users to the system, revoking access, and managing user profiles. This would likely integrate with the team-based access control system.
