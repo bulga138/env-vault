@@ -1,0 +1,70 @@
+version: 2
+
+project_name: env-vault
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: env-vault
+    main: .
+    binary: env-vault
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - id: env-vault
+    ids: [env-vault]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - .env.example
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: bulga138
+    name: env-vault
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+homebrew_casks:
+  - name: env-vault
+    binaries:
+      - env-vault
+    ids:
+      - env-vault
+    repository:
+      owner: bulga138
+      name: homebrew-env-vault
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      branch: main
+    homepage: "https://github.com/bulga138/env-vault"
+    description: "Secure .env file manager with encryption and version control integration"
+    license: "MIT"
+

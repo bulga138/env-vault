@@ -5,128 +5,32 @@ on:
     tags:
       - 'v*'
 
-jobs:
-  build_and_release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+permissions:
+  contents: write
 
+jobs:
+  release:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
-      
-      - name: Extract Version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          go-version-file: go.mod
+          cache: true
 
-      - name: Prepare Release Assets and Changelog
-        id: prepare_assets
-        run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          mkdir -p release-assets
-          cp .env.example release-assets/.env
-          
-          # Crear el archivo de instrucciones (SETUP_INSTRUCTIONS.txt)
-          cat << EOF > release-assets/SETUP_INSTRUCTIONS.txt
-          # env-vault Setup Instructions
-          
-          This file provides guidance on obtaining the credentials needed for full env-vault functionality.
-          
-          ## 1. Bitwarden Secrets Manager (BWS)
-          
-          env-vault uses BWS for secure storage of your master passwords.
-          
-          ### BWS_PROJECT_ID
-          Required for env-vault to know where to save your secrets.
-          1. Log into your Bitwarden web vault.
-          2. Navigate to the 'Secrets Manager' section.
-          3. Select your project and copy the **Project ID**.
-          4. Set this value in your local environment as BWS_PROJECT_ID.
-          
-          ### BWS_ACCESS_TOKEN (Used by the 'bws' CLI)
-          The underlying Bitwarden CLI ('bws') requires an access token for authentication.
-          1. Go to your User Settings > API Keys.
-          2. Create a new API Key (personal or service account) with sufficient permissions (Read/Write to Secrets Manager).
-          3. Copy the generated Access Token.
-          4. Set this value in your local environment as BWS_ACCESS_TOKEN.
-          
-          ## 2. Google Firestore (Cloud Sync)
-          
-          Required for the 'sync-save' and 'sync-load' commands.
-          
-          ### serviceAccountKeys.json
-          This file is used to set the GOOGLE_APPLICATION_CREDENTIALS variable.
-          1. Go to your Google Cloud Console.
-          2. Navigate to Firebase Project Settings > Service Accounts.
-          3. Generate a new private key, download the JSON file and rename it to 'serviceAccountKeys.json'
-          4. **Keep this file secure** and set the path in your local environment as GOOGLE_APPLICATION_CREDENTIALS.
-          
-          EOF
-          
-          if [ -f "CHANGELOG.md" ]; then
-              CHANGELOG_BODY=$(awk '/^## / {if (++i == 2) {exit}} {print}' CHANGELOG.md)
-          else
-              cat << EOF > RELEASE_BODY.md
-              # env-vault v${VERSION} Release
+      - name: Run tests
+        run: go test ./...
 
-              Please refer to the commits for changes.
-          EOF
-              return 
-          fi
-          echo "$CHANGELOG_BODY" > RELEASE_BODY.md
-
-      - name: Build Versioned Binaries
-        run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          
-          # Linux/Unix: env-vault-${VERSION}-linux-amd64
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o release-assets/env-vault-${VERSION}-linux-amd64 .
-
-          # macOS: env-vault-${VERSION}-darwin-amd64
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o release-assets/env-vault-${VERSION}-darwin-amd64 .
-          
-          # Windows: env-vault-${VERSION}-windows-amd64.exe
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o release-assets/env-vault-${VERSION}-windows-amd64.exe .
-
-      - name: Create Versioned Archives
-        run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          TIMESTAMP="1970-01-01"
-    
-          # Linux
-          tar -czf release-assets/env-vault-linux-${VERSION}.tar.gz \
-          --transform="s|env-vault-${VERSION}-linux-amd64|env-vault|" \
-          --mtime="$TIMESTAMP" \
-          -C release-assets \
-          env-vault-${VERSION}-linux-amd64 .env SETUP_INSTRUCTIONS.txt
-    
-          # macOS
-          tar -czf release-assets/env-vault-darwin-${VERSION}.tar.gz \
-          --transform="s|env-vault-${VERSION}-darwin-amd64|env-vault|" \
-          --mtime="$TIMESTAMP" \
-          -C release-assets \
-          env-vault-${VERSION}-darwin-amd64 .env SETUP_INSTRUCTIONS.txt
-    
-          # Windows
-          zip -j release-assets/env-vault-windows-${VERSION}.zip \
-          release-assets/env-vault-${VERSION}-windows-amd64.exe \
-          release-assets/.env \
-          release-assets/SETUP_INSTRUCTIONS.txt
-
-      - name: List created files (for debugging)
-        run: ls -la release-assets/
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
-          files: |
-            release-assets/*.tar.gz
-            release-assets/*.zip
-          draft: false
-          prerelease: false
-          body_path: RELEASE_BODY.md
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

@@ -25,3 +25,4 @@ env-vault.exe
 .DS_Store
 Thumbs.db
 QUICKSTART.local.md
+dist/
