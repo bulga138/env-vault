@@ -53,10 +53,14 @@ func (s *SQLiteSyncProvider) Save(ctx context.Context, repoName string, secret S
 	if err != nil {
 		return err
 	}
+	enc, err := encryptSyncData(data)
+	if err != nil {
+		return err
+	}
 	_, err = s.DB.ExecContext(ctx,
 		`INSERT INTO secrets(repo_key, data, updated_at) VALUES(?,?,?)
 		 ON CONFLICT(repo_key) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
-		utils.GetRepoKey(repoName), string(data), time.Now().Unix())
+		utils.GetRepoKey(repoName), enc, time.Now().Unix())
 	return err
 }
 
@@ -72,8 +76,12 @@ func (s *SQLiteSyncProvider) LoadAll(ctx context.Context) (map[string]StoredEnv,
 		if err := rows.Scan(&key, &data); err != nil {
 			continue
 		}
+		plain, err := decryptSyncData(data)
+		if err != nil {
+			continue
+		}
 		var secret StoredEnv
-		if err := json.Unmarshal([]byte(data), &secret); err != nil {
+		if err := json.Unmarshal(plain, &secret); err != nil {
 			continue
 		}
 		out[key] = secret

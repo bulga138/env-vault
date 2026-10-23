@@ -28,8 +28,8 @@ This document outlines the major enterprise-level features to be developed for `
 - [x] **OS Keyring integration** (`--use-keyring`)
   - Store/retrieve the master password in the OS keyring (via `zalando/go-keyring`) instead of env vars/prompts.
 
-- [ ] **Encrypted at-rest storage (sqlcipher)**
-  - Replace plain SQLite with SQLCipher for encrypted local storage.
+- [x] **Encrypted at-rest storage (application-level AES-GCM)**
+  - Encrypt sync DB payloads with AES-GCM using SYNC_DB_PASSPHRASE (sqlcipher requires CGO).
 
 - [x] **Secure memory handling (memguard)**
   - Lock password/key bytes in memory and prevent swapping.
