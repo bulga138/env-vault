@@ -50,7 +50,22 @@ if ($LASTEXITCODE -ne 0) {
     $userResponse = Read-Host -Prompt "⚠️ 'bws' not found. Do you want to install it now? (y/N): "
     if ($userResponse -eq "y" -or $userResponse -eq "Y") {
         Write-Host "Installing 'bws'..."
-        .\install_bws.ps1
+        $bwsInstaller = Join-Path $PSScriptRoot 'install_bws.ps1'
+        if (-not (Test-Path $bwsInstaller)) {
+            Write-Error "❌ Could not find install_bws.ps1 at $bwsInstaller"
+            exit 1
+        }
+        & $bwsInstaller
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ 'bws' installation failed."
+            exit 1
+        }
+        # Verify
+        $null = & bws --version 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ 'bws' not found after installation."
+            exit 1
+        }
         Write-Host "✅ 'bws' successfully installed!"
     }
     else {
