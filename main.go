@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	version           = "dev"
 	useBitWarden      = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
 	useKeyring        = flag.Bool("use-keyring", false, "Use OS keyring to fetch/store the master password")
 	repoOverride      = flag.String("repo", "", "Specify repository name (e.g., 'user/repo')")
@@ -26,6 +27,7 @@ var (
 	auditLimit        = flag.Int("audit-limit", 0, "Limit audit entries")
 	syncStrategy      = flag.String("sync-strategy", "newest", "Conflict strategy: newest, remote, local, skip")
 	forceFlag         = flag.Bool("force", false, "Force overwrite without confirmation")
+	versionFlag       = flag.Bool("version", false, "Print version and exit")
 )
 
 type AuditLog struct {
@@ -101,6 +103,11 @@ func main() {
 
 	flag.Parse()
 
+	if *versionFlag {
+		fmt.Printf("env-vault version %s\n", version)
+		return
+	}
+
 	if flag.NArg() < 1 {
 		printHelp()
 		return
@@ -108,6 +115,8 @@ func main() {
 	command := flag.Arg(0)
 
 	switch command {
+	case "version":
+		fmt.Printf("env-vault version %s\n", version)
 	case "save":
 		handleSave()
 	case "get":
@@ -226,7 +235,7 @@ func handleSave() {
 	}
 
 	if passwordGenerated {
-	// Bitwarden Secrets Manager
+		// Bitwarden Secrets Manager
 		var response string
 		fmt.Scanln(&response)
 
@@ -240,7 +249,7 @@ func handleSave() {
 				utils.Fatal("Error saving to %s: %v", secretProvider.Name(), err)
 				return
 			}
-	// Bitwarden Secrets Manager
+			// Bitwarden Secrets Manager
 		} else {
 			utils.Warn("Master password not saved to BitWarden. Make sure to remember it, as you will need it to decrypt your .env files.")
 		}
@@ -646,7 +655,7 @@ LOG_LEVEL=INFO
 
 	shellConfigPath := getShellConfigPath()
 	if shellConfigPath != "" && shellName != "powershell" {
-	utils.Info("Final Step: Load Configuration")
+		utils.Info("Final Step: Load Configuration")
 		utils.Warn("You need to add the following line to your shell startup file:")
 
 		fmt.Printf("\nexport ENV_VAULT_CONFIG_PATH=\"%s\"\n", configFilePath)
@@ -661,7 +670,7 @@ LOG_LEVEL=INFO
 			utils.Success("\nShell config file opened. Complete the step and then restart your terminal.")
 		}
 	} else if shellName != "powershell" {
-	utils.Info("Final Step: Load Configuration")
+		utils.Info("Final Step: Load Configuration")
 		utils.Warn("Could not automatically detect your shell configuration file.")
 		utils.Warn("Please add the following line to your shell's startup file (e.g., ~/.bashrc, ~/.zshrc):")
 		fmt.Printf("\nexport ENV_VAULT_CONFIG_PATH=\"%s\"\n\n", configFilePath)
