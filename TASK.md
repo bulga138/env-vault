@@ -31,7 +31,7 @@ This document outlines the major enterprise-level features to be developed for `
 - [ ] **Encrypted at-rest storage (sqlcipher)**
   - Replace plain SQLite with SQLCipher for encrypted local storage.
 
-- [ ] **Secure memory handling (memguard)**
+- [x] **Secure memory handling (memguard)**
   - Lock password/key bytes in memory and prevent swapping.
 
 - [ ] **Recovery phrases (BIP39 mnemonic)**
