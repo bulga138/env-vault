@@ -129,6 +129,8 @@ func main() {
 		handleACL()
 	case "audit":
 		handleAudit()
+	case "keyring":
+		handleKeyring()
 	case "backup":
 		handleBackup()
 	case "restore":
