@@ -14,6 +14,7 @@ This document outlines planned features for `env-vault`. Each item represents a 
 
 - [x] **Cloud Backup & Synchronization** (backup/restore + Firestore sync)
 - Integrate with a cloud storage provider (like AWS S3 or Google Cloud Storage) to enable automatic backup and synchronization of the `vault.json` file. Used for team collaboration and disaster recovery.
+- Pluggable sync backends: `file` (default), `sqlite`, `firestore`, and `p2p`/`peer`/`relay`/`rendezvous`.
 
 - [ ] **Admin Dashboard (Web UI)**
 - Develop a web-based dashboard for administrators to manage users, teams, and view audit logs.
