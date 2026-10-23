@@ -24,6 +24,7 @@ var (
 	auditFilterUser   = flag.String("audit-user", "", "Filter audit log by user")
 	auditLimit        = flag.Int("audit-limit", 0, "Limit audit entries")
 	syncStrategy      = flag.String("sync-strategy", "newest", "Conflict strategy: newest, remote, local, skip")
+	forceFlag         = flag.Bool("force", false, "Force overwrite without confirmation")
 )
 
 type AuditLog struct {

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/bulga138/env-vault/utils"
@@ -38,8 +40,33 @@ func handleBackup() {
 		utils.Fatal("Error writing backup: %v", err)
 		return
 	}
+	// Rotate: keep only the 10 most recent backups
+	rotateBackups(backupDir, 10)
 	logAudit("backup", "", true, "")
 	utils.Success("Backup created at %s", backupFile)
+}
+
+func rotateBackups(dir string, keep int) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	var backups []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasPrefix(e.Name(), "vault-") && strings.HasSuffix(e.Name(), ".json") {
+			backups = append(backups, e.Name())
+		}
+	}
+	if len(backups) <= keep {
+		return
+	}
+	sort.Strings(backups)
+	for i := 0; i < len(backups)-keep; i++ {
+		_ = os.Remove(filepath.Join(dir, backups[i]))
+	}
 }
 
 func handleRestore() {
@@ -65,6 +92,15 @@ func handleRestore() {
 	if err != nil {
 		utils.Fatal("Error getting vault path: %v", err)
 		return
+	}
+	if _, err := os.Stat(vaultFile); err == nil && !*forceFlag {
+		fmt.Print("Vault file exists. Overwrite? (y/N): ")
+		var resp string
+		fmt.Scanln(&resp)
+		if strings.ToLower(strings.TrimSpace(resp)) != "y" {
+			utils.Info("Restore cancelled.")
+			return
+		}
 	}
 	if err := os.WriteFile(vaultFile, data, 0600); err != nil {
 		logAudit("restore", "", false, err.Error())
