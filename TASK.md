@@ -18,5 +18,5 @@ This document outlines the major enterprise-level features to be developed for `
 - [ ] **Admin Dashboard (Web UI)**
   - Develop a simple web-based dashboard for administrators to manage users, teams, and view audit logs. This provides a user-friendly interface for system management.
 
-- [ ] **User Management System**
+- [x] **User Management System** (basic local registry)
   - Build functionality for inviting new users to the system, revoking access, and managing user profiles. This would likely integrate with the team-based access control system.
