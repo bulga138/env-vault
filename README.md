@@ -155,7 +155,33 @@ For encrypted vault synchronization, you must configure Google Cloud authenticat
 
 -----
 
-## Security
+## Sync Backends
+
+Select a backend with `SYNC_BACKEND` (default `file`):
+
+| Backend | Description |
+|:---|:---|
+| `file` | Local JSON files in the user config directory (default). |
+| `sqlite` | Local SQLite database; set `SYNC_DB_PASSPHRASE` to encrypt payloads. |
+| `firestore` | Google Firestore (requires `GOOGLE_APPLICATION_CREDENTIALS`). |
+| `p2p` / `peer` / `relay` / `rendezvous` | Peer-to-peer sync via relay/rendezvous. |
+
+Example (local SQLite):
+
+```bash
+export SYNC_BACKEND=sqlite
+export SYNC_DB_PASSPHRASE="a strong passphrase"
+env-vault sync-save
+env-vault sync-load --sync-strategy=newest
+```
+
+## Secret Providers
+
+- **Bitwarden Secrets Manager**: set `BWS_PROJECT_ID` and use `--use-bitwarden`.
+- **OS keyring**: use `--use-keyring` to store/retrieve the master password in the OS keyring.
+- **Interactive/env**: use `ENV_VAULT_PASSWORD` or the password prompt.
+
+-----
 
 - Master passwords are never stored on disk. They are securely cleared from memory (`secureZero`) immediately after use.
 - **HMAC Verification:** Each secret has an HMAC verified with the master key to ensure integrity and detect tampering.
