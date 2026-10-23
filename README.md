@@ -101,13 +101,23 @@ env-vault <command>
 | `verify` | Verifies the HMAC integrity of all secrets in `vault.json` (requires the password). |
 | `sync-save` | Uploads the encrypted secret for the current repo to Firestore. |
 | `sync-load` | Downloads all secrets from Firestore and merges them into the local vault. |
+| `users` | Manage vault users (`list`, `add`, `remove`). |
+| `acl` | Manage per-repo access control (`grant`, `revoke`, `list`). |
+| `audit` | View audit logs (`list`, `tail`) with optional filters. |
+| `keyring` | Manage OS keyring entries (`set`, `get`, `delete`, `status`). |
+| `mnemonic` | Generate or recover a BIP39 recovery phrase. |
+| `backup` | Create a rotated backup of the vault (keeps 10 most recent). |
+| `restore` | Restore a vault backup (confirms overwrite unless `--force`). |
+| `p2p` / `peer` / `relay` | Peer-to-peer sync via relay/rendezvous. |
+| `banner` | Print the local `beNotAfraid.txt` ASCII art. |
 
 ### Global Options
 
 | Option | Description |
 |:---|:---|
 | `--use-bitwarden` | Uses Bitwarden to fetch the master password instead of prompting for it. |
-| `--repo=NAME` | Specifies the repository name (e.g., `user/repo`) for commands like `rotate-pass`. |
+| `--sync-strategy` | Conflict resolution for `sync-load`: `newest`, `remote`, `local`, or `skip`. |
+| `--force` | Skip confirmation prompts (e.g. `restore`). |
 
 ### Environment Variables (non-interactive)
 
@@ -115,6 +125,7 @@ env-vault <command>
 |:---|:---|
 | `ENV_VAULT_PASSWORD` | Master password for `save` / `get` / `verify` / `rotate-pass` (skips the prompt). Useful for CI. |
 | `ENV_VAULT_NEW_PASSWORD` | New master password for non-interactive `rotate-pass`. |
+| `SYNC_DB_PASSPHRASE` | Passphrase used to encrypt the SQLite sync backend. |
 
 -----
 
