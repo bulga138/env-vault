@@ -12,7 +12,7 @@ This document outlines the major enterprise-level features to be developed for `
 - [x] **Audit Logging**
   - Create a secure, append-only log that records all critical actions. This includes who accessed a secret, who updated a secret, user logins, and administrative changes.
 
-- [ ] **Cloud Backup & Synchronization**
+- [x] **Cloud Backup & Synchronization** (backup/restore + Firestore sync)
   - Integrate with a cloud storage provider (like AWS S3 or Google Cloud Storage) to enable automatic backup and synchronization of the `vault.json` file. This is crucial for team collaboration and disaster recovery.
 
 - [ ] **Admin Dashboard (Web UI)**

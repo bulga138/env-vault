@@ -121,6 +121,10 @@ func main() {
 		handleUsers()
 	case "acl":
 		handleACL()
+	case "backup":
+		handleBackup()
+	case "restore":
+		handleRestore()
 	default:
 		printHelp()
 	}
