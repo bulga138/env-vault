@@ -6,7 +6,7 @@ This document outlines the major enterprise-level features to be developed for `
 
 ### ## ✅ Task List
 
-- [ ] **Team-Based Access Control (ACL)**
+- [x] **Team-Based Access Control (ACL)** (basic)
   - Implement a system for creating teams and assigning roles (e.g., `admin`, `member`, `read-only`). Secrets should be shareable and accessible based on team membership and permissions.
 
 - [x] **Audit Logging**

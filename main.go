@@ -119,6 +119,8 @@ func main() {
 		handleSetupConfig()
 	case "users":
 		handleUsers()
+	case "acl":
+		handleACL()
 	default:
 		printHelp()
 	}
@@ -130,6 +132,11 @@ func handleSave() {
 	if err != nil {
 		logAudit("save", "", false, fmt.Sprintf("Failed to get repository name: %v", err))
 		utils.Fatal("Failed to get repository name: %v", err)
+		return
+	}
+	if hasACL(repoName) && !checkPermission(currentUser(), repoName, "write") {
+		logAudit("save", repoName, false, "Permission denied (write)")
+		utils.Fatal("Permission denied: you do not have write access to this repository.")
 		return
 	}
 	hashedRepoName := utils.GetRepoKey(repoName)
@@ -231,6 +238,11 @@ func handleGet() {
 	if err != nil {
 		logAudit("get", "", false, fmt.Sprintf("Failed to get repository name: %v", err))
 		utils.Fatal("Error getting repo name: %v", err)
+		return
+	}
+	if hasACL(repoName) && !checkPermission(currentUser(), repoName, "read") {
+		logAudit("get", repoName, false, "Permission denied (read)")
+		utils.Fatal("Permission denied: you do not have read access to this repository.")
 		return
 	}
 	hashedRepoName := utils.GetRepoKey(repoName)
@@ -623,6 +635,60 @@ func handleUsers() {
 		utils.Success("User %q removed.", name)
 	default:
 		fmt.Println("Unknown users subcommand. Use list, add, or remove.")
+	}
+}
+
+func handleACL() {
+	if flag.NArg() < 2 {
+		fmt.Println("Usage: env-vault acl <grant|revoke|list> [args]")
+		return
+	}
+	sub := flag.Arg(1)
+	switch sub {
+	case "list":
+		entries, err := listACL()
+		if err != nil {
+			utils.Fatal("Error listing ACL: %v", err)
+			return
+		}
+		if len(entries) == 0 {
+			utils.Info("No ACL entries.")
+			return
+		}
+		for _, e := range entries {
+			fmt.Printf("%-20s %-44s %s\n", e.User, e.RepoKey, e.Permission)
+		}
+	case "grant":
+		if flag.NArg() < 5 {
+			fmt.Println("Usage: env-vault acl grant <user> <repo-name> <read|write|admin>")
+			return
+		}
+		user := flag.Arg(2)
+		repo := flag.Arg(3)
+		perm := flag.Arg(4)
+		if err := grantACL(user, repo, perm); err != nil {
+			logAudit("acl-grant", repo, false, err.Error())
+			utils.Fatal("Error granting ACL: %v", err)
+			return
+		}
+		logAudit("acl-grant", repo, true, "")
+		utils.Success("Granted %s to %s on %s.", perm, user, repo)
+	case "revoke":
+		if flag.NArg() < 4 {
+			fmt.Println("Usage: env-vault acl revoke <user> <repo-name>")
+			return
+		}
+		user := flag.Arg(2)
+		repo := flag.Arg(3)
+		if err := revokeACL(user, repo); err != nil {
+			logAudit("acl-revoke", repo, false, err.Error())
+			utils.Fatal("Error revoking ACL: %v", err)
+			return
+		}
+		logAudit("acl-revoke", repo, true, "")
+		utils.Success("Revoked access for %s on %s.", user, repo)
+	default:
+		fmt.Println("Unknown acl subcommand. Use grant, revoke, or list.")
 	}
 }
 
