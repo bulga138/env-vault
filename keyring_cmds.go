@@ -28,12 +28,13 @@ func handleKeyring() {
 			utils.Fatal("Error reading password: %v", err)
 			return
 		}
+		pwBuf, pw := lockBytes(pw)
+		defer destroyLocked(pwBuf)
 		if err := keyringSet(repoKey, pw); err != nil {
 			logAudit("keyring-set", repoName, false, err.Error())
 			utils.Fatal("Error storing in keyring: %v", err)
 			return
 		}
-		secureZero(pw)
 		logAudit("keyring-set", repoName, true, "")
 		utils.Success("Password stored in OS keyring for this repository.")
 	case "get":
@@ -42,9 +43,10 @@ func handleKeyring() {
 			utils.Fatal("No password in keyring: %v", err)
 			return
 		}
+		pwBuf, pw := lockBytes(pw)
+		defer destroyLocked(pwBuf)
 		// Print to stdout for scripting (use with care)
 		fmt.Println(string(pw))
-		secureZero(pw)
 	case "delete":
 		if err := keyringDelete(repoKey); err != nil {
 			logAudit("keyring-delete", repoName, false, err.Error())

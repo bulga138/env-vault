@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/awnumar/memguard"
 	"github.com/bulga138/env-vault/providers"
 	"github.com/bulga138/env-vault/utils"
 	"github.com/joho/godotenv"
@@ -81,6 +82,7 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 
 func main() {
 	utils.InitLogging()
+	memguard.CatchInterrupt()
 
 	configPath := os.Getenv("ENV_VAULT_CONFIG_PATH")
 	if configPath != "" {
@@ -218,6 +220,9 @@ func handleSave() {
 	}
 
 	if password != nil {
+		var pwBuf *memguard.LockedBuffer
+		pwBuf, password = lockBytes(password)
+		defer destroyLocked(pwBuf)
 	}
 
 	if passwordGenerated {
@@ -247,6 +252,9 @@ func handleSave() {
 		utils.Fatal("Error reading '.env' file: %v", err)
 		return
 	}
+
+	contentBuf, content := lockBytes(content)
+	defer destroyLocked(contentBuf)
 
 	if err := saveEnv(repoName, content, password); err != nil {
 		logAudit("save", repoName, false, fmt.Sprintf("Error saving .env to vault: %v", err))
@@ -323,6 +331,9 @@ func handleGet() {
 	}
 
 	if password != nil {
+		var pwBuf *memguard.LockedBuffer
+		pwBuf, password = lockBytes(password)
+		defer destroyLocked(pwBuf)
 	}
 
 	content, err := getEnv(repoName, password)
@@ -331,6 +342,9 @@ func handleGet() {
 		utils.Fatal("Error getting .env from vault: %v", err)
 		return
 	}
+
+	contentBuf, content := lockBytes(content)
+	defer destroyLocked(contentBuf)
 
 	comment := fmt.Sprintf("# Sourced from env-vault for %s\n\n", repoName)
 	finalContent := append([]byte(comment), content...)
@@ -428,12 +442,18 @@ func handleRotatePassword() {
 		return
 	}
 
+	oldBuf, oldPassword := lockBytes(oldPassword)
+	defer destroyLocked(oldBuf)
+
 	plaintext, err := getEnv(repoName, oldPassword)
 	if err != nil {
 		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Decryption failed: %v", err))
 		utils.Fatal(ErrDecryptionFailed.Error(), ":%v", err)
 		return
 	}
+
+	plainBuf, plaintext := lockBytes(plaintext)
+	defer destroyLocked(plainBuf)
 
 	var newPassword []byte
 	var secretProvider providers.SecretProvider
@@ -468,6 +488,9 @@ func handleRotatePassword() {
 		newPassword = p1
 	}
 
+	newBuf, newPassword := lockBytes(newPassword)
+	defer destroyLocked(newBuf)
+
 	if *useBitWarden {
 		secretProvider, err = providers.GetSecretProvider()
 		if err != nil {
@@ -490,7 +513,6 @@ func handleRotatePassword() {
 	if *useKeyring {
 		_ = keyringSet(hashedRepoName, newPassword)
 	}
-	secureZero(plaintext)
 
 	logAudit("rotate-pass", repoName, true, "")
 	utils.Success("✅ Master password rotated successfully for '%s'!", repoName)

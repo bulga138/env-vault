@@ -10,11 +10,14 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/awnumar/memguard"
 	"golang.org/x/crypto/argon2"
 )
 
-func deriveKey(password, salt []byte) []byte {
-	return argon2.IDKey(password, salt, 3, 64*1024, 4, 32)
+func deriveKey(password, salt []byte) (*memguard.LockedBuffer, []byte) {
+	raw := argon2.IDKey(password, salt, 3, 64*1024, 4, 32)
+	lb, locked := lockBytes(raw)
+	return lb, locked
 }
 
 func encrypt(plaintext []byte, key []byte) ([]byte, error) {

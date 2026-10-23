@@ -29,7 +29,8 @@ func saveEnv(repoName string, content []byte, password []byte) error {
 		return fmt.Errorf("error generating salt: %w", err)
 	}
 
-	key := deriveKey(password, salt)
+	keyLB, key := deriveKey(password, salt)
+	defer destroyLocked(keyLB)
 	encryptedContent, err := encrypt(content, key)
 	if err != nil {
 		return err
@@ -75,7 +76,8 @@ func getEnv(repoName string, password []byte) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidCiphertext, err)
 	}
 
-	key := deriveKey(password, salt)
+	keyLB, key := deriveKey(password, salt)
+	defer destroyLocked(keyLB)
 
 	hmacInput := []byte(stored.Ciphertext + stored.Salt)
 	if !verifyHMAC(hmacInput, key, stored.HMAC) {
@@ -167,7 +169,8 @@ func verifyEntryHMAC(stored StoredEnv, password []byte) error {
 		return fmt.Errorf("invalid salt encoding: %w", err)
 	}
 
-	key := deriveKey(password, salt)
+	keyLB, key := deriveKey(password, salt)
+	defer destroyLocked(keyLB)
 
 	hmacInput := []byte(stored.Ciphertext + stored.Salt)
 
@@ -196,7 +199,8 @@ func VerifyAll(getPasswordFunc func(repoName string) ([]byte, error)) (map[strin
 		if err := verifyEntryHMAC(stored, password); err != nil {
 			results[hashedKey] = fmt.Errorf("HMAC verification failed: %w", err)
 		} else {
-			_, err = getEnvByStoredEnv(stored, password)
+			pt, err := getEnvByStoredEnv(stored, password)
+			secureZero(pt)
 			if err != nil {
 				results[hashedKey] = fmt.Errorf("HMAC OK, but decryption failed (possible tampering or key issue): %w", err)
 			} else {
@@ -218,7 +222,8 @@ func getEnvByStoredEnv(stored StoredEnv, password []byte) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidCiphertext, err)
 	}
 
-	key := deriveKey(password, salt)
+	keyLB, key := deriveKey(password, salt)
+	defer destroyLocked(keyLB)
 	plaintext, err := decrypt(encryptedContent, key)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrDecryptionFailed, err)

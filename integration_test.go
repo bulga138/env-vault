@@ -61,7 +61,7 @@ func TestIntegration_Firestore_SaveLoadDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	password := []byte("integration-master-pass-1!")
-	key := deriveKey(password, salt)
+	_, key := deriveKey(password, salt)
 	content := []byte("INT_KEY=integration-value\n")
 	ct, err := encrypt(content, key)
 	if err != nil {

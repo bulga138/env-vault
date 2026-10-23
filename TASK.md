@@ -36,8 +36,8 @@ This document outlines planned features for `env-vault`. Each item represents a 
 - [x] **Encrypted at-rest storage (application-level AES-GCM)**
 - Encrypt sync DB payloads with AES-GCM using SYNC_DB_PASSPHRASE (sqlcipher requires CGO).
 
-- [ ] **Secure memory handling (memguard)** (deferred)
-- Lock password/key bytes in memory and prevent swapping. (memguard caused runtime faults; needs refactor to LockedBuffer throughout.)
+- [x] **Secure memory handling (memguard)**
+- Lock password/key bytes in memory and prevent swapping. (Implemented with memguard LockedBuffer at password entry points and derived keys; destroy on completion.)
 
 - [x] **Recovery phrases (BIP39 mnemonic)**
 - Generate and recover master keys from a mnemonic seed phrase.

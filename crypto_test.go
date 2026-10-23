@@ -14,7 +14,7 @@ func TestCryptoRoundtrip(t *testing.T) {
 		t.Fatalf("salt: %v", err)
 	}
 
-	key := deriveKey(password, salt)
+	_, key := deriveKey(password, salt)
 	plaintext := []byte("FOO=bar\nBAZ=qux\n")
 
 	ct, err := encrypt(plaintext, key)
