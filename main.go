@@ -17,6 +17,7 @@ import (
 
 var (
 	useBitWarden = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
+	useKeyring   = flag.Bool("use-keyring", false, "Use OS keyring to fetch/store the master password")
 	repoOverride = flag.String("repo", "", "Specify repository name (e.g., 'user/repo')")
 )
 
@@ -164,6 +165,15 @@ func handleSave() {
 		password, passErr = secretProvider.Get(hashedRepoName)
 	} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
 		password = []byte(p)
+	} else if *useKeyring {
+		if p, err := keyringGet(hashedRepoName); err == nil {
+			password = p
+		} else {
+			password, passErr = promptForPassword("Enter your master password to store in keyring: ")
+			if passErr == nil {
+				_ = keyringSet(hashedRepoName, password)
+			}
+		}
 	} else if _, exists := vault[hashedRepoName]; exists {
 		password, passErr = promptForPassword("Enter your master password again: ")
 	} else {
@@ -220,6 +230,9 @@ func handleSave() {
 		utils.Fatal("Error saving .env to vault: %v", err)
 		return
 	}
+	if *useKeyring {
+		_ = keyringSet(hashedRepoName, password)
+	}
 	logAudit("save", repoName, true, "")
 	utils.Info(".env file for '%s' safely saved!", repoName)
 }
@@ -268,7 +281,18 @@ func handleGet() {
 	} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
 		password = []byte(p)
 	} else {
-		password, passErr = promptForPassword("Enter your master password to decrypt: ")
+		if *useKeyring {
+			if p, err := keyringGet(hashedRepoName); err == nil {
+				password = p
+			} else {
+				password, passErr = promptForPassword("Enter your master password to store in keyring: ")
+				if passErr == nil {
+					_ = keyringSet(hashedRepoName, password)
+				}
+			}
+		} else {
+			password, passErr = promptForPassword("Enter your master password to decrypt: ")
+		}
 	}
 	if passErr != nil {
 		utils.Fatal("Error reading password: %v", passErr)
@@ -355,10 +379,22 @@ func handleRotatePassword() {
 	} else if p := os.Getenv("ENV_VAULT_PASSWORD"); p != "" {
 		oldPassword = []byte(p)
 	} else {
-		oldPassword, err = promptForPassword("Enter CURRENT master password to decrypt: ")
-		if err != nil {
-			utils.Fatal("Failed to read current password: %v", err)
-			return
+		if *useKeyring {
+			if p, err2 := keyringGet(hashedRepoName); err2 == nil {
+				oldPassword = p
+			} else {
+				oldPassword, err = promptForPassword("Enter CURRENT master password to decrypt: ")
+				if err != nil {
+					utils.Fatal("Failed to read current password: %v", err)
+					return
+				}
+			}
+		} else {
+			oldPassword, err = promptForPassword("Enter CURRENT master password to decrypt: ")
+			if err != nil {
+				utils.Fatal("Failed to read current password: %v", err)
+				return
+			}
 		}
 	}
 
@@ -426,6 +462,9 @@ func handleRotatePassword() {
 		return
 	}
 
+	if *useKeyring {
+		_ = keyringSet(hashedRepoName, newPassword)
+	}
 	secureZero(plaintext)
 	secureZero(newPassword)
 
@@ -710,6 +749,7 @@ func printHelp() {
 	fmt.Println("  setup-config  - Interactive setup for env-vault configuration.")
 	fmt.Println("\nOPTIONS:")
 	fmt.Println("  -use-bitwarden  - Use BitWarden to get the master password instead of prompting.")
+	fmt.Println("  -use-keyring    - Use OS keyring to get/store the master password.")
 	fmt.Println("  -repo=NAME      - Specify repository name (e.g., 'user/repo') for rotate-pass.")
 	fmt.Println("\nENVIRONMENT:")
 	fmt.Println("  ENV_VAULT_PASSWORD      - Master password for non-interactive save/get/verify/rotate.")
