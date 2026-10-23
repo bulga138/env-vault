@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"golang.org/x/term"
@@ -90,14 +89,7 @@ func PrintBanner(name string, content string) {
 
 // loadSpinnerChars reads spinner characters from beNotAfraid.txt when available.
 func loadSpinnerChars() []rune {
-	candidates := []string{"beNotAfraid.txt"}
-	if exe, err := os.Executable(); err == nil {
-		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "beNotAfraid.txt"))
-	}
-	for _, p := range candidates {
-		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-			return []rune(string(data))
-		}
-	}
-	return []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
+	return []rune(beNotAfraidSpinner)
 }
+
+const beNotAfraidSpinner = "B̴̠́̔e̶͍̅ ̸̘͂̉͜n̶̫̞̆ȍ̶̢͕̉ṯ̷̒̏ ̶͉̆a̷̯͙͑ḟ̷̧̈r̸̩̓͝a̴̢͉͌î̸̲̗d̵̤̩͊̾"
