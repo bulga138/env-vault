@@ -23,6 +23,7 @@ var (
 	auditFilterAction = flag.String("audit-action", "", "Filter audit log by action")
 	auditFilterUser   = flag.String("audit-user", "", "Filter audit log by user")
 	auditLimit        = flag.Int("audit-limit", 0, "Limit audit entries")
+	syncStrategy      = flag.String("sync-strategy", "newest", "Conflict strategy: newest, remote, local, skip")
 )
 
 type AuditLog struct {

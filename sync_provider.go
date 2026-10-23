@@ -189,9 +189,44 @@ func handleSyncLoad() {
 	}
 
 	loadedCount := 0
+	conflicts := 0
 	for k, v := range secrets {
-		localVault[k] = v
-		loadedCount++
+		existing, ok := localVault[k]
+		if !ok {
+			localVault[k] = v
+			loadedCount++
+			continue
+		}
+		// conflict resolution
+		strategy := *syncStrategy
+		remoteNewer := v.TimeStamp > existing.TimeStamp
+		localNewer := existing.TimeStamp > v.TimeStamp
+		contentDiffers := v.Ciphertext != existing.Ciphertext || v.HMAC != existing.HMAC
+
+		switch strategy {
+		case "remote":
+			localVault[k] = v
+			loadedCount++
+		case "local":
+			// keep existing
+		case "skip":
+			if contentDiffers {
+				conflicts++
+			}
+		default: // newest
+			if remoteNewer {
+				localVault[k] = v
+				loadedCount++
+			} else if localNewer {
+				// keep local
+			} else if contentDiffers {
+				// equal timestamps but different content -> conflict, keep local
+				conflicts++
+			}
+		}
+	}
+	if conflicts > 0 {
+		utils.Warn("Detected %d conflict(s); kept local copy. Use --sync-strategy=remote to overwrite.", conflicts)
 	}
 
 	if err := saveVault(localVault); err != nil {
