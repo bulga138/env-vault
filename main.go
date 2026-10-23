@@ -16,9 +16,12 @@ import (
 )
 
 var (
-	useBitWarden = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
-	useKeyring   = flag.Bool("use-keyring", false, "Use OS keyring to fetch/store the master password")
-	repoOverride = flag.String("repo", "", "Specify repository name (e.g., 'user/repo')")
+	useBitWarden      = flag.Bool("use-bitwarden", false, "Use BitWarden to fetch the master password")
+	useKeyring        = flag.Bool("use-keyring", false, "Use OS keyring to fetch/store the master password")
+	repoOverride      = flag.String("repo", "", "Specify repository name (e.g., 'user/repo')")
+	auditFilterAction = flag.String("audit-action", "", "Filter audit log by action")
+	auditFilterUser   = flag.String("audit-user", "", "Filter audit log by user")
+	auditLimit        = flag.Int("audit-limit", 0, "Limit audit entries")
 )
 
 type AuditLog struct {
@@ -122,6 +125,8 @@ func main() {
 		handleUsers()
 	case "acl":
 		handleACL()
+	case "audit":
+		handleAudit()
 	case "backup":
 		handleBackup()
 	case "restore":
