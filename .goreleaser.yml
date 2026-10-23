@@ -64,7 +64,7 @@ homebrew_casks:
       owner: bulga138
       name: homebrew-env-vault
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-      branch: main
+      branch: master
     homepage: "https://github.com/bulga138/env-vault"
     description: "Secure .env file manager with encryption and version control integration"
     license: "MIT"
