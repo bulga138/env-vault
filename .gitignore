@@ -24,3 +24,4 @@ env-vault.exe
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+QUICKSTART.local.md
