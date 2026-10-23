@@ -3,21 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>env-vault</title>
+  <title>env-vault — Documentation</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
-    a { color: #0969da; }
-    code { background: #f6f8fa; padding: 0.2em 0.4em; border-radius: 3px; }
-    pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    :root { --bg: #ffffff; --fg: #24292f; --muted: #57606a; --border: #d0d7de; --code: #f6f8fa; --accent: #0969da; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); margin: 0; line-height: 1.6; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+    header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 2rem; }
+    header h1 { margin: 0; font-size: 2rem; }
+    header p { color: var(--muted); margin: 0.5rem 0 0; }
+    nav { margin: 1rem 0; }
+    nav a { color: var(--accent); text-decoration: none; margin-right: 1.5rem; font-weight: 500; }
+    nav a:hover { text-decoration: underline; }
+    h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+    h3 { margin-top: 1.5rem; }
+    code { background: var(--code); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
+    pre { background: var(--code); padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--code); }
+    ul { padding-left: 1.5rem; }
+    .badge { display: inline-block; background: var(--accent); color: #fff; padding: 0.2em 0.6em; border-radius: 3px; font-size: 0.8em; }
+    footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <h1>env-vault</h1>
-  <p>Secure <code>.env</code> file manager with encryption and version control integration.</p>
-  <ul>
-    <li><a href="flows.md">Flows</a></li>
-    <li><a href="https://github.com/bulga138/env-vault">Repository</a></li>
-  </ul>
-  <p>See the main <a href="https://github.com/bulga138/env-vault#readme">README</a> for installation and usage.</p>
+<div class="container">
+  <header>
+    <h1>env-vault</h1>
+    <p>Secure <code>.env</code> file manager with encryption and version control integration.</p>
+    <nav>
+      <a href="#overview">Overview</a>
+      <a href="#install">Install</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#commands">Commands</a>
+      <a href="#config">Configuration</a>
+      <a href="https://github.com/bulga138/env-vault">GitHub</a>
+    </nav>
+  </header>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <p><strong>env-vault</strong> is a command-line tool that encrypts <code>.env</code> files and stores them outside Git, linked to a repository. It uses <strong>Argon2id</strong> key derivation and <strong>AES-256-GCM</strong> for strong encryption, with HMAC integrity verification on every secret.</p>
+    <h3>Features</h3>
+    <ul>
+      <li><strong>Strong Encryption</strong>: Argon2id + AES-256-GCM</li>
+      <li><strong>Integrity Verification</strong>: <code>verify</code> command checks HMAC on all secrets</li>
+      <li><strong>Secret Providers</strong>: Bitwarden Secrets Manager, OS keyring, or interactive prompt</li>
+      <li><strong>Git Integration</strong>: Auto-detects repository context (<code>user/repo</code>)</li>
+      <li><strong>Cloud Sync</strong>: Optional Google Firestore backend</li>
+      <li><strong>Cross-Platform</strong>: Windows, macOS, Linux</li>
+      <li><strong>Secure Storage</strong>: Local vault with file locking and audit logs</li>
+    </ul>
+  </section>
+
+  <section id="install">
+    <h2>Installation</h2>
+    <h3>Homebrew (macOS / Linux)</h3>
+    <pre><code>brew tap bulga138/env-vault
+brew install --cask env-vault
+env-vault version  # → env-vault version 1.0.0</code></pre>
+    <h3>Pre-compiled binaries</h3>
+    <p>Download the latest release from the <a href="https://github.com/bulga138/env-vault/releases">GitHub Releases</a> page.</p>
+    <h3>From source</h3>
+    <pre><code>git clone https://github.com/bulga138/env-vault.git
+cd env-vault
+go build .
+# or
+go install .</code></pre>
+    <p>Requires Go 1.24+.</p>
+  </section>
+
+  <section id="quickstart">
+    <h2>Quick Start</h2>
+    <h3>1. Bitwarden Configuration (Recommended)</h3>
+    <pre><code>export BWS_PROJECT_ID="your_bitwarden_project_id"
+bws login</code></pre>
+    <h3>2. Save a Secret</h3>
+    <pre><code>cd /path/to/your/project
+env-vault save --use-bitwarden</code></pre>
+    <p>If a key for this repo doesn't exist, a new one is generated and you're prompted to save it in Bitwarden.</p>
+    <h3>3. Retrieve on a New Machine</h3>
+    <pre><code>cd /path/to/your/project
+env-vault get --use-bitwarden</code></pre>
+    <p>If an existing <code>.env</code> is found, it's saved as <code>.env.recovered</code>.</p>
+  </section>
+
+  <section id="commands">
+    <h2>Commands</h2>
+    <table>
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td><code>save</code></td><td>Encrypts and stores the <code>.env</code> file for the current repository.</td></tr>
+      <tr><td><code>get</code></td><td>Retrieves and decrypts the <code>.env</code> file.</td></tr>
+      <tr><td><code>rotate-pass</code></td><td>Rotates the master password (useful for updating the Bitwarden key).</td></tr>
+      <tr><td><code>generate-pass</code></td><td>Generates a new secure 16-character master password.</td></tr>
+      <tr><td><code>verify</code></td><td>Verifies HMAC integrity of all secrets in <code>vault.json</code>.</td></tr>
+      <tr><td><code>sync-save</code></td><td>Uploads the encrypted secret to Firestore.</td></tr>
+      <tr><td><code>sync-load</code></td><td>Downloads all secrets from Firestore into the local vault.</td></tr>
+      <tr><td><code>users</code></td><td>Manage vault users (<code>list</code>, <code>add</code>, <code>remove</code>).</td></tr>
+      <tr><td><code>acl</code></td><td>Manage per-repo access control (<code>grant</code>, <code>revoke</code>, <code>list</code>).</td></tr>
+      <tr><td><code>audit</code></td><td>View audit logs (<code>list</code>, <code>tail</code>) with optional filters.</td></tr>
+      <tr><td><code>keyring</code></td><td>Manage OS keyring entries (<code>set</code>, <code>get</code>, <code>delete</code>, <code>status</code>).</td></tr>
+      <tr><td><code>mnemonic</code></td><td>Generate or recover a BIP39 recovery phrase.</td></tr>
+      <tr><td><code>backup</code></td><td>Create a rotated backup of the vault (keeps 10 most recent).</td></tr>
+      <tr><td><code>restore</code></td><td>Restore a vault backup (confirms overwrite unless <code>--force</code>).</td></tr>
+      <tr><td><code>p2p</code> / <code>peer</code> / <code>relay</code></td><td>Peer-to-peer sync via relay/rendezvous.</td></tr>
+      <tr><td><code>version</code></td><td>Print version and exit.</td></tr>
+    </table>
+    <h3>Global Options</h3>
+    <table>
+      <tr><th>Option</th><th>Description</th></tr>
+      <tr><td><code>--use-bitwarden</code></td><td>Use Bitwarden to fetch the master password.</td></tr>
+      <tr><td><code>--use-keyring</code></td><td>Use OS keyring to store/fetch the master password.</td></tr>
+      <tr><td><code>--repo</code></td><td>Specify repository name (e.g. <code>user/repo</code>).</td></tr>
+      <tr><td><code>--sync-strategy</code></td><td>Conflict resolution for <code>sync-load</code>: <code>newest</code>, <code>remote</code>, <code>local</code>, <code>skip</code>.</td></tr>
+      <tr><td><code>--force</code></td><td>Skip confirmation prompts (e.g. <code>restore</code>).</td></tr>
+      <tr><td><code>--version</code></td><td>Print version and exit.</td></tr>
+    </table>
+    <h3>Environment Variables</h3>
+    <table>
+      <tr><th>Variable</th><th>Description</th></tr>
+      <tr><td><code>ENV_VAULT_PASSWORD</code></td><td>Master password for <code>save</code>/<code>get</code>/<code>verify</code>/<code>rotate-pass</code> (skips prompt). Useful for CI.</td></tr>
+      <tr><td><code>ENV_VAULT_NEW_PASSWORD</code></td><td>New master password for non-interactive <code>rotate-pass</code>.</td></tr>
+      <tr><td><code>SYNC_DB_PASSPHRASE</code></td><td>Passphrase for the SQLite sync backend.</td></tr>
+      <tr><td><code>BWS_PROJECT_ID</code></td><td>Bitwarden Secrets Manager Project ID.</td></tr>
+      <tr><td><code>GOOGLE_APPLICATION_CREDENTIALS</code></td><td>Path to GCP service account key (for <code>sync-save</code>/<code>sync-load</code>).</td></tr>
+      <tr><td><code>SYNC_BACKEND</code></td><td>Backend: <code>file</code> (default), <code>sqlite</code>, <code>firestore</code>, <code>p2p</code>.</td></tr>
+    </table>
+  </section>
+
+  <section id="config">
+    <h2>Configuration</h2>
+    <h3>Sync Backends</h3>
+    <table>
+      <tr><th>Backend</th><th>Description</th></tr>
+      <tr><td><code>file</code></td><td>Local JSON files in the user config directory (default).</td></tr>
+      <tr><td><code>sqlite</code></td><td>Local SQLite database; set <code>SYNC_DB_PASSPHRASE</code> to encrypt payloads.</td></tr>
+      <tr><td><code>firestore</code></td><td>Google Firestore (requires <code>GOOGLE_APPLICATION_CREDENTIALS</code>).</td></tr>
+      <tr><td><code>p2p</code> / <code>peer</code> / <code>relay</code></td><td>Peer-to-peer sync via relay/rendezvous.</td></tr>
+    </table>
+    <h3>Security</h3>
+    <ul>
+      <li>Master passwords are never stored on disk. They are securely cleared from memory immediately after use.</li>
+      <li><strong>HMAC Verification:</strong> Each secret has an HMAC verified with the master key to detect tampering.</li>
+      <li>The <code>vault.json</code> file uses restricted permissions (0600) and file locking during writing.</li>
+      <li>Each entry uses a <strong>unique salt</strong> for Argon2id key derivation.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>MIT License — <a href="https://github.com/bulga138/env-vault">GitHub</a> · <a href="https://github.com/bulga138/env-vault/releases">Releases</a></p>
+  </footer>
+</div>
 </body>
 </html>
