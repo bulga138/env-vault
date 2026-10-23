@@ -46,7 +46,6 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 		User:         os.Getenv("USER"),
 	}
 
-	// Get audit log file path
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		utils.Warn("Could not get config directory for audit log: %v", err)
@@ -61,7 +60,6 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 
 	auditFile := filepath.Join(auditDir, "audit.log")
 
-	// Append to audit log (restricted permissions)
 	f, err := os.OpenFile(auditFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		utils.Warn("Could not open audit log file: %v", err)
@@ -137,6 +135,8 @@ func main() {
 		handleBackup()
 	case "restore":
 		handleRestore()
+	case "banner":
+		handleBanner()
 	default:
 		printHelp()
 	}
@@ -217,13 +217,13 @@ func handleSave() {
 		fmt.Scanln(&response)
 
 		if strings.ToLower(response) == "y" {
-			secretProvider, err := providers.GetSecretProvider() // Get the provider instance
+			secretProvider, err := providers.GetSecretProvider()
 			if err != nil {
 				utils.Fatal(ErrNoSecretProvider.Error(), ":%v", err)
 				return
 			}
-			if err := secretProvider.Set(hashedRepoName, password); err != nil { // Call method on instance
-				utils.Fatal("Error saving to %s: %v", secretProvider.Name(), err) // Call method on instance
+			if err := secretProvider.Set(hashedRepoName, password); err != nil {
+				utils.Fatal("Error saving to %s: %v", secretProvider.Name(), err)
 				return
 			}
 			utils.Info("Master password saved to BitWarden Secrets Manager.")
@@ -238,7 +238,6 @@ func handleSave() {
 		utils.Fatal("Error reading '.env' file: %v", err)
 		return
 	}
-
 
 	if err := saveEnv(repoName, content, password); err != nil {
 		logAudit("save", repoName, false, fmt.Sprintf("Error saving .env to vault: %v", err))
@@ -317,7 +316,6 @@ func handleGet() {
 	if password != nil {
 	}
 
-
 	content, err := getEnv(repoName, password)
 	if err != nil {
 		logAudit("get", repoName, false, fmt.Sprintf("Error getting .env from vault: %v", err))
@@ -350,7 +348,6 @@ func handleGeneratePassword() {
 	fmt.Printf("\n%s\n\n", password)
 	utils.Info("Copy this password and store it in a safe place (like a password manager).")
 }
-
 
 func handleRotatePassword() {
 	utils.Info("🔄 Rotating master password for repository...")
@@ -422,7 +419,6 @@ func handleRotatePassword() {
 		return
 	}
 
-
 	plaintext, err := getEnv(repoName, oldPassword)
 	if err != nil {
 		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Decryption failed: %v", err))
@@ -475,7 +471,6 @@ func handleRotatePassword() {
 		}
 		utils.Info("✅ Master password updated in %s.", secretProvider.Name())
 	}
-
 
 	if err := saveEnv(repoName, plaintext, newPassword); err != nil {
 		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Failed to re-encrypt: %v", err))
@@ -755,6 +750,37 @@ func handleACL() {
 	}
 }
 
+func handleBanner() {
+	name := "owl"
+	if flag.NArg() > 1 {
+		name = flag.Arg(1)
+	}
+	candidates := []string{name}
+	if name == "owl" {
+		candidates = []string{"owl", "throne.txt", "beNotAfraid.txt"}
+	}
+
+	var data []byte
+	var used string
+	var lastErr error
+	for _, c := range candidates {
+		b, err := os.ReadFile(c)
+		if err == nil {
+			data = b
+			used = c
+			break
+		}
+		lastErr = err
+	}
+
+	if data == nil {
+		fmt.Printf("No banner file found (%v): %v\n", candidates, lastErr)
+		return
+	}
+	fmt.Printf("Banner: %s\n", used)
+	utils.PrintBanner(used, string(data))
+}
+
 func printHelp() {
 	fmt.Println("Welcome to env-vault 🛡️")
 	fmt.Println("Usage: env-vault [OPTION] COMMAND")
@@ -764,6 +790,7 @@ func printHelp() {
 	fmt.Println("  generate-pass - Generate a new secure master password.")
 	fmt.Println("  sync-save     - Save the current repo's secret to Firestore.")
 	fmt.Println("  sync-load     - Load all secrets from Firestore to vault.json.")
+	fmt.Println("  banner [file] - Print an ASCII art banner from a local file (owl, throne.txt, beNotAfraid.txt).")
 	fmt.Println("  rotate-pass   - Rotate the master password for the current (or specified) repository.")
 	fmt.Println("  verify        - Verify the integrity of all secrets in vault.json (requires master password).")
 	fmt.Println("  setup-config  - Interactive setup for env-vault configuration.")

@@ -1,22 +1,22 @@
-# env-vault 🛡️
+# env-vault
 
 **Secure .env file manager with encryption and version control integration**
 
-`env-vault` is a command-line tool that securely encrypts and stores your environment variables, linking them to specific Git repositories. Never worry about accidentally committing sensitive credentials again!
+`env-vault` is a command-line tool that encrypts `.env` files and stores them outside Git, linked to a repository.
 
-## 🌟 Features
+## Features
 
-  - 🔐 **Strong Encryption**: Uses Argon2 key derivation and **AES-256-GCM**
-  - 🛡️ **Integrity Verification**: Command to verify that secrets haven't been tampered with (`verify`)
-  - 🔑 **Secret Providers**: Integrates with **Bitwarden Secrets Manager** for automatic password fetching.
-  - 🔄 **Git Integration**: Automatically detects repository context (`user/repo` format)
-  - ☁️ **Cloud Sync**: Optional backend integration with Google Firestore
-  - 📱 **Cross-Platform**: Works on Windows, macOS, and Linux
-  - 🔒 **Secure Storage**: Uses local vault with file locking and audit logs
+- **Strong Encryption**: Uses Argon2 key derivation and **AES-256-GCM**
+- **Integrity Verification**: Command to verify that secrets haven't been tampered with (`verify`)
+- **Secret Providers**: Integrates with **Bitwarden Secrets Manager** for automatic password fetching.
+- **Git Integration**: Automatically detects repository context (`user/repo` format)
+- **Cloud Sync**: Optional backend integration with Google Firestore
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+- **Secure Storage**: Uses local vault with file locking and audit logs
 
 -----
 
-## 📦 Installation
+## Installation
 
 ### Pre-compiled binaries
 
@@ -38,9 +38,9 @@ go install .
 
 -----
 
-## 🚀 Quick Start
+## Quick Start
 
-The most secure and recommended flow is to use an external secret provider (like Bitwarden) to store your vault's master key.
+The recommended flow is to use an external secret provider (like Bitwarden) to store your vault's master key.
 
 ### 1\. Bitwarden Configuration (Recommended)
 
@@ -86,7 +86,7 @@ env-vault get --use-bitwarden
 
 -----
 
-## 📖 Usage and Commands
+## Usage and Commands
 
 ```bash
 env-vault <command>
@@ -118,47 +118,47 @@ env-vault <command>
 
 -----
 
-## 🔧 Provider Configuration
+## Provider Configuration
 
 `env-vault` requires you to define at least one method to obtain the master password: manually or through a secret provider.
 
-### 🔑 Bitwarden Secrets Manager
+### Bitwarden Secrets Manager
 
 `env-vault` uses the Bitwarden CLI (`bws`) to manage the vault's master password.
 
 | Variable | Description | Required |
 |:---|:---|:----:|
-| `BWS_PROJECT_ID` | The Bitwarden Secrets Manager Project ID where the keys will be stored. | ✅ Yes |
+| `BWS_PROJECT_ID` | The Bitwarden Secrets Manager Project ID where the keys will be stored. | Yes |
 
 The secret is stored in Bitwarden under a key with the format `env-vault-<repo-hash>`.
 
-### ☁️ Google Firestore (Vault Synchronization)
+### Google Firestore (Vault Synchronization)
 
 For encrypted vault synchronization, you must configure Google Cloud authentication.
 
 | Variable | Description | Required |
 |:---|:---|:----:|
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path to the Google Cloud service account key JSON file. | ✅ Yes (for `sync-save`/`sync-load`) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to the Google Cloud service account key JSON file. | Yes (for `sync-save`/`sync-load`) |
 
 **Note on Authentication:** The current workflow is designed for manual authentication or using the integrated Bitwarden/Firestore providers.
 
 -----
 
-## 🔒 Security
+## Security
 
-  - 🔑 Master passwords are never stored on disk. They are securely cleared from memory (`secureZero`) immediately after use.
-  - 🛡️ **HMAC Verification:** Each secret has an HMAC verified with the master key to ensure integrity and detect tampering.
-  - 🔐 The `vault.json` file uses restricted permissions (0600) and file locking (`flock`) during writing.
-  - 🔄 Each entry uses a **unique salt** for Argon2id key derivation, making each decryption resistant.
+- Master passwords are never stored on disk. They are securely cleared from memory (`secureZero`) immediately after use.
+- **HMAC Verification:** Each secret has an HMAC verified with the master key to ensure integrity and detect tampering.
+- The `vault.json` file uses restricted permissions (0600) and file locking (`flock`) during writing.
+- Each entry uses a **unique salt** for Argon2id key derivation, making each decryption resistant.
 
 -----
 
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 
-  - Go 1.24+
-  - Make (optional, for build commands)
+- Go 1.24+
+- Make (optional, for build commands)
 
 ### Building
 
@@ -184,20 +184,20 @@ make test-integration
 
 Integration tests skip automatically when credentials/CLI are missing. Firestore writes use `FIRESTORE_COLLECTION` (default `secrets`; tests set `env-vault-e2e`). Bitwarden secrets are created under unique keys and deleted afterwards.
 
-## 🤝 Contributing
+## Contributing
 
-1.  Fork the repository
-2.  Create your feature branch (`git checkout -b feature/amazing-feature`)
-3.  Commit your changes (`git commit -m 'Add amazing feature'`)
-4.  Push to the branch (`git push origin feature/amazing-feature`)
-5.  Open a Pull Request
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 License
+## License
 
 MIT License - see the [**LICENSE**](LICENSE) file
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-  - **Argon2id** for robust key derivation
-  - **AES-256-GCM** for strong encryption
-  - **Google Cloud** for Firestore integration
+- **Argon2id** for key derivation
+- **AES-256-GCM** for strong encryption
+- **Google Cloud** for Firestore integration

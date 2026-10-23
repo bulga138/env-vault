@@ -5,7 +5,7 @@ import (
 )
 
 func TestPrintHelp(t *testing.T) {
-	// This test just ensures printHelp runs without panic
+
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("printHelp panicked: %v", r)

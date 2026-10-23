@@ -4,43 +4,43 @@ This directory contains utility scripts to simplify the installation and configu
 
 ---
 
-## 💻 Available Scripts
+## Available Scripts
 
 | Script Name | Purpose | Scope | Dependencies |
 |:---|:---|:---|:---|
 | `install_env-vault.ps1` | **Main Installer.** Handles checking for Go, installing `env-vault` via `go install`, and interactively configuring the necessary environment variables (`BWS_PROJECT_ID`, `VAULT_FILE_PATH`, etc.). | Windows | **Go (1.24+)** |
-| `install_bws.ps1` | **Dependency Installer.** A robust PowerShell script to download, install, and add the official **Bitwarden Secrets Manager CLI (`bws.exe`)** to the system or user PATH. | Windows | **PowerShell 5.1+** |
+| `install_bws.ps1` | **Dependency Installer.** PowerShell script that downloads, installs, and adds the official **Bitwarden Secrets Manager CLI (`bws.exe`)** to the system or user PATH. | Windows | **PowerShell 5.1+** |
 
 ---
 
-## 🚀 Quick Start (Windows)
+## Quick Start (Windows)
 
 The recommended way to set up the entire environment is to run the main installer script.
 
-1.  **Prerequisites:**
-    * Ensure **Go (version 1.24 or newer)** is installed and available in your system's PATH.
-    * Ensure you are running **PowerShell 5.1 or PowerShell Core (6+)**.
+1. **Prerequisites:**
+ * Ensure **Go (version 1.24 or newer)** is installed and available in your system's PATH.
+ * Ensure you are running **PowerShell 5.1 or PowerShell Core (6+)**.
 
-2.  **Execute the Main Installer:**
-    Open PowerShell and run the main script. This script will automatically check for the `bws` dependency and prompt you to run its installer if it's missing.
+2. **Execute the Main Installer:**
+ Open PowerShell and run the main script. This script will automatically check for the `bws` dependency and prompt you to run its installer if it's missing.
 
-    ```powershell
-    # Ensure execution policy allows running local scripts (run as Administrator once)
-    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-    
-    # Run the main installation script
-    .\install_env-vault.ps1
-    ```
+ ```powershell
+ # Ensure execution policy allows running local scripts (run as Administrator once)
+ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-3.  **Follow Prompts:**
-    The script will guide you through:
-    * Installing or reinstalling `env-vault`.
-    * *Optionally* running `install_bws.ps1` to install the Bitwarden CLI.
-    * Setting the configuration values for `env-vault` (e.g., `BWS_PROJECT_ID`).
+ # Run the main installation script
+ .\install_env-vault.ps1
+ ```
+
+3. **Follow Prompts:**
+ The script will guide you through:
+ * Installing or reinstalling `env-vault`.
+ * *Optionally* running `install_bws.ps1` to install the Bitwarden CLI.
+ * Setting the configuration values for `env-vault` (e.g., `BWS_PROJECT_ID`).
 
 ---
 
-## 📜 Script Details
+## Script Details
 
 ### `install_env-vault.ps1`
 
@@ -55,7 +55,7 @@ This script automates the full setup flow for `env-vault`.
 
 ### `install_bws.ps1`
 
-This is an advanced, full-featured installer for the Bitwarden CLI, designed for enterprise-grade deployment.
+This installer downloads and configures the Bitwarden CLI (bws).
 
 **Features:**
 * **Automatic Latest Release Detection:** Queries the GitHub API for the latest stable release.

@@ -12,9 +12,9 @@ import (
 )
 
 type aclEntry struct {
-	User       string `json:"user"`
-	RepoKey    string `json:"repo_key"`
-	Permission string `json:"permission"` // read, write, admin
+	User       string    `json:"user"`
+	RepoKey    string    `json:"repo_key"`
+	Permission string    `json:"permission"` // read, write, admin
 	GrantedAt  time.Time `json:"granted_at"`
 }
 

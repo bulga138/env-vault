@@ -11,8 +11,6 @@ func GetSecretProvider() (SecretProvider, error) {
 		return NewBitwardenProvider()
 	}
 
-	// TODO: Add other providers here (e.g., check VAULT_ADDR for HashiCorp Vault)
-
 	// No provider configured
 	return nil, fmt.Errorf("no secret provider configured. Set BWS_PROJECT_ID or use password prompt")
 }

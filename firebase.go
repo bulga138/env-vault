@@ -21,7 +21,7 @@ func initFirestoreClient(ctx context.Context) (*firestore.Client, error) {
 	}
 
 	opt := option.WithCredentialsFile(credPath)
- firebaseProjectId := os.Getenv("FIREBASE_PROJECT_ID")
+	firebaseProjectId := os.Getenv("FIREBASE_PROJECT_ID")
 	conf := &firebase.Config{
 		ProjectID: firebaseProjectId,
 	}

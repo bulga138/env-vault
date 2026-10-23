@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tyler-smith/go-bip39"
 	"github.com/bulga138/env-vault/utils"
+	"github.com/tyler-smith/go-bip39"
 )
 
 func handleMnemonic() {

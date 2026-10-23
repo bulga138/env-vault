@@ -1,6 +1,6 @@
 # Checksum verification implemented.
 # This script automatically downloads, installs, or updates the Bitwarden Secrets Manager CLI (bws).
-# It is a full-featured, enterprise-grade tool that handles security validation, rollbacks, and advanced automation.
+# It installs the Bitwarden Secrets Manager CLI (bws).
 
 <#
 .SYNOPSIS

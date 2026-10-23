@@ -6,21 +6,15 @@ import (
 	"testing"
 )
 
-// NOTA: Para probar getCurrentRepoName, necesitarías una forma de mockear os/exec,
-// o usar un test de integración que dependa de un repositorio git inicializado, lo cual no es unitario.
-// Por ahora, nos centraremos en las funciones puras.
-
-// --- Prueba de parseGitRemoteURL ---
-
 func TestParseGitRemoteURL(t *testing.T) {
-	// Estructura de casos de prueba
+
 	tests := []struct {
 		name     string
 		rawURL   string
 		expected string
 		err      bool
 	}{
-		// Casos de éxito (HTTP/HTTPS)
+
 		{
 			name:     "HTTPS-Standard",
 			rawURL:   "https://github.com/user/repo.git",
@@ -33,7 +27,7 @@ func TestParseGitRemoteURL(t *testing.T) {
 			expected: "gitlab.com/group/project",
 			err:      false,
 		},
-		// Casos de éxito (SSH) - ¡Importante por el fix!
+
 		{
 			name:     "SSH-Standard",
 			rawURL:   "git@github.com:bulga138/gowine.git",
@@ -46,7 +40,7 @@ func TestParseGitRemoteURL(t *testing.T) {
 			expected: "myhost.com/path/to/repo",
 			err:      false,
 		},
-		// Casos de fallo
+
 		{
 			name:     "EmptyURL",
 			rawURL:   "",
@@ -88,10 +82,8 @@ func TestParseGitRemoteURL(t *testing.T) {
 	}
 }
 
-// --- Prueba de generateSecurePassword y secureZero ---
-
 func TestGenerateSecurePassword(t *testing.T) {
-	// 1. Probar la longitud mínima
+
 	t.Run("LengthTooShort", func(t *testing.T) {
 		_, err := generateSecurePassword(7)
 		if err == nil {
@@ -99,7 +91,6 @@ func TestGenerateSecurePassword(t *testing.T) {
 		}
 	})
 
-	// 2. Probar la longitud estándar y la complejidad
 	for length := 8; length <= 32; length += 8 {
 		t.Run(fmt.Sprintf("ComplexityAndLength_%d", length), func(t *testing.T) {
 			password, err := generateSecurePassword(length)

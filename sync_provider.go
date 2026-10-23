@@ -44,8 +44,6 @@ func availableSyncBackends() []string {
 	return out
 }
 
-// --- Local file sync provider (no third-party service) ---
-
 type FileSyncProvider struct {
 	Dir string
 }
