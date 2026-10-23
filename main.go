@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -135,8 +136,10 @@ func main() {
 		handleBackup()
 	case "restore":
 		handleRestore()
-	case "banner":
-		handleBanner()
+	case "init", "wizard":
+		handleInit()
+	case "doctor":
+		handleDoctor()
 	case "p2p", "peer", "relay":
 		handleP2P()
 	case "admin":
@@ -218,7 +221,7 @@ func handleSave() {
 	}
 
 	if passwordGenerated {
-		utils.Info("Do you wanna save this new password in BitWarden Secrets Manager? (y/n): ")
+	// Bitwarden Secrets Manager
 		var response string
 		fmt.Scanln(&response)
 
@@ -232,7 +235,7 @@ func handleSave() {
 				utils.Fatal("Error saving to %s: %v", secretProvider.Name(), err)
 				return
 			}
-			utils.Info("Master password saved to BitWarden Secrets Manager.")
+	// Bitwarden Secrets Manager
 		} else {
 			utils.Warn("Master password not saved to BitWarden. Make sure to remember it, as you will need it to decrypt your .env files.")
 		}
@@ -545,7 +548,7 @@ func handleVerify() {
 }
 
 func handleSetupConfig() {
-	utils.Info("🚀 Starting env-vault configuration setup...")
+	utils.Info("Starting env-vault configuration setup...")
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		utils.Fatal("Error: Could not determine user configuration directory: %v", err)
@@ -568,17 +571,17 @@ func handleSetupConfig() {
 # env-vault configuration file. DO NOT COMMIT TO GIT.
 # ---------------------------------------------------
 
-# 🛡️ Core Security Settings
+# Core Security Settings
 VAULT_FILE_PATH=%s/vault.json
 ENV_VAULT_PEPPER=%s
 
-# 🔑 Bitwarden Secrets Manager
+	// Bitwarden Secrets Manager
 BWS_PROJECT_ID=%s
 
-# ☁️ Google Firestore/Cloud Sync
+# Google Firestore/Cloud Sync
 GOOGLE_APPLICATION_CREDENTIALS=%s
 
-# ⚙️ Logging Configuration (Defaults)
+# Logging Configuration (Defaults)
 LOG_OUTPUT=TERMINAL
 LOG_FILE=%s/env-vault.log
 LOG_LEVEL=INFO
@@ -787,6 +790,49 @@ func handleBanner() {
 	utils.PrintBanner(used, string(data))
 }
 
+func handleDoctor() {
+	utils.Info("env-vault doctor")
+	if repo, err := getCurrentRepoName(); err != nil {
+		utils.Warn("Git repo detection: %v", err)
+	} else {
+		utils.Success("Git repo: %s", repo)
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		utils.Warn("git not found in PATH")
+	} else {
+		utils.Success("git available")
+	}
+	if _, err := exec.LookPath("bws"); err != nil {
+		utils.Warn("bws (Bitwarden CLI) not found (optional unless using --use-bitwarden)")
+	} else {
+		utils.Success("bws available")
+	}
+	if configPath := os.Getenv("ENV_VAULT_CONFIG_PATH"); configPath != "" {
+		if _, err := os.Stat(configPath); err != nil {
+			utils.Warn("ENV_VAULT_CONFIG_PATH set but file missing: %s", configPath)
+		} else {
+			utils.Success("Config file: %s", configPath)
+		}
+	} else {
+		utils.Warn("ENV_VAULT_CONFIG_PATH not set (run 'env-vault init')")
+	}
+	configDir, _ := os.UserConfigDir()
+	vaultPath := filepath.Join(configDir, "env-vault", "vault.json")
+	if _, err := os.Stat(vaultPath); err != nil {
+		utils.Info("Vault not initialized yet: %s", vaultPath)
+	} else {
+		utils.Success("Vault exists: %s", vaultPath)
+	}
+}
+
+func handleInit() {
+	handleSetupConfig()
+	utils.Info("Next steps:")
+	utils.Info("  1. cd into a git repository")
+	utils.Info("  2. env-vault save   (or: env-vault save --use-keyring)")
+	utils.Info("  3. env-vault verify")
+}
+
 func printHelp() {
 	fmt.Println("Welcome to env-vault 🛡️")
 	fmt.Println("Usage: env-vault [OPTION] COMMAND")
@@ -804,7 +850,8 @@ func printHelp() {
 	fmt.Println("  backup        - Create a rotated backup of the vault.")
 	fmt.Println("  restore       - Restore a vault backup.")
 	fmt.Println("  p2p           - Peer-to-peer sync via relay/rendezvous.")
-	fmt.Println("  banner        - Print the local beNotAfraid.txt ASCII art.")
+	fmt.Println("  init          - Interactive configuration wizard.")
+	fmt.Println("  doctor        - Check environment and setup status.")
 	fmt.Println("  admin         - Terminal dashboard for users, ACL, and audit logs.")
 	fmt.Println("  rotate-pass   - Rotate the master password for the current (or specified) repository.")
 	fmt.Println("  verify        - Verify the integrity of all secrets in vault.json (requires master password).")

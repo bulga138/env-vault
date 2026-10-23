@@ -26,21 +26,30 @@ const (
 func getCurrentRepoName() (string, error) {
 	cmd := exec.Command("git", "remote", "get-url", "origin")
 	output, err := cmd.Output()
+	if err == nil {
+		url := strings.TrimSpace(string(output))
+		if url != "" {
+			repoID, err := parseGitRemoteURL(url)
+			if err == nil {
+				return repoID, nil
+			}
+		}
+	}
+
+	// Fallback: use the repository directory name when no origin remote exists.
+	topCmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	if topOut, err := topCmd.Output(); err == nil {
+		top := strings.TrimSpace(string(topOut))
+		if top != "" {
+			return "local/" + filepath.Base(top), nil
+		}
+	}
+
+	cwd, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("failed to run 'git remote get-url origin': %w", err)
+		return "", fmt.Errorf("could not determine current directory: %w", err)
 	}
-
-	url := strings.TrimSpace(string(output))
-	if url == "" {
-		return "", fmt.Errorf("git remote URL is empty")
-	}
-
-	repoID, err := parseGitRemoteURL(url)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse git remote URL '%s': %w", url, err)
-	}
-
-	return repoID, nil
+	return "local/" + filepath.Base(cwd), nil
 }
 
 func promptForPassword(prompt string) ([]byte, error) {
