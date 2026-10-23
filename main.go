@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/awnumar/memguard"
 	"github.com/bulga138/env-vault/providers"
 	"github.com/bulga138/env-vault/utils"
 	"github.com/joho/godotenv"
@@ -83,7 +82,6 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 
 func main() {
 	utils.InitLogging()
-	memguard.CatchInterrupt()
 
 	configPath := os.Getenv("ENV_VAULT_CONFIG_PATH")
 	if configPath != "" {
@@ -210,10 +208,7 @@ func handleSave() {
 		return
 	}
 
-	var lockedPw *memguard.LockedBuffer
 	if password != nil {
-		lockedPw, password = lockPassword(password)
-		defer lockedPw.Destroy()
 	}
 
 	if passwordGenerated {
@@ -243,6 +238,7 @@ func handleSave() {
 		utils.Fatal("Error reading '.env' file: %v", err)
 		return
 	}
+
 
 	if err := saveEnv(repoName, content, password); err != nil {
 		logAudit("save", repoName, false, fmt.Sprintf("Error saving .env to vault: %v", err))
@@ -318,11 +314,9 @@ func handleGet() {
 		return
 	}
 
-	var lockedPw *memguard.LockedBuffer
 	if password != nil {
-		lockedPw, password = lockPassword(password)
-		defer lockedPw.Destroy()
 	}
+
 
 	content, err := getEnv(repoName, password)
 	if err != nil {
@@ -428,11 +422,6 @@ func handleRotatePassword() {
 		return
 	}
 
-	var lockedOld *memguard.LockedBuffer
-	if oldPassword != nil {
-		lockedOld, oldPassword = lockPassword(oldPassword)
-		defer lockedOld.Destroy()
-	}
 
 	plaintext, err := getEnv(repoName, oldPassword)
 	if err != nil {
@@ -487,11 +476,6 @@ func handleRotatePassword() {
 		utils.Info("✅ Master password updated in %s.", secretProvider.Name())
 	}
 
-	var lockedNew *memguard.LockedBuffer
-	if newPassword != nil {
-		lockedNew, newPassword = lockPassword(newPassword)
-		defer lockedNew.Destroy()
-	}
 
 	if err := saveEnv(repoName, plaintext, newPassword); err != nil {
 		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Failed to re-encrypt: %v", err))

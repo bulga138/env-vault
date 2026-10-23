@@ -123,6 +123,36 @@ func init() {
 	})
 }
 
+// resolveConflict decides how to merge a remote secret into an existing local one.
+func resolveConflict(strategy string, existing, remote StoredEnv) (StoredEnv, bool, bool) {
+	remoteNewer := remote.TimeStamp > existing.TimeStamp
+	localNewer := existing.TimeStamp > remote.TimeStamp
+	contentDiffers := remote.Ciphertext != existing.Ciphertext || remote.HMAC != existing.HMAC
+
+	switch strategy {
+	case "remote":
+		return remote, true, false
+	case "local":
+		return existing, false, false
+	case "skip":
+		if contentDiffers {
+			return existing, false, true
+		}
+		return existing, false, false
+	default: // newest
+		if remoteNewer {
+			return remote, true, false
+		}
+		if localNewer {
+			return existing, false, false
+		}
+		if contentDiffers {
+			return existing, false, true
+		}
+		return existing, false, false
+	}
+}
+
 func handleSyncSave() {
 	utils.Info("☁️  Saving current repo's secret to sync backend...")
 	ctx := context.Background()
@@ -197,32 +227,13 @@ func handleSyncLoad() {
 			loadedCount++
 			continue
 		}
-		// conflict resolution
-		strategy := *syncStrategy
-		remoteNewer := v.TimeStamp > existing.TimeStamp
-		localNewer := existing.TimeStamp > v.TimeStamp
-		contentDiffers := v.Ciphertext != existing.Ciphertext || v.HMAC != existing.HMAC
-
-		switch strategy {
-		case "remote":
-			localVault[k] = v
+		resolved, updated, conflict := resolveConflict(*syncStrategy, existing, v)
+		localVault[k] = resolved
+		if updated {
 			loadedCount++
-		case "local":
-			// keep existing
-		case "skip":
-			if contentDiffers {
-				conflicts++
-			}
-		default: // newest
-			if remoteNewer {
-				localVault[k] = v
-				loadedCount++
-			} else if localNewer {
-				// keep local
-			} else if contentDiffers {
-				// equal timestamps but different content -> conflict, keep local
-				conflicts++
-			}
+		}
+		if conflict {
+			conflicts++
 		}
 	}
 	if conflicts > 0 {

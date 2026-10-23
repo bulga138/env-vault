@@ -7,6 +7,8 @@ require (
 	github.com/DeRuina/timberjack v1.3.7
 	github.com/gofrs/flock v0.12.1
 	github.com/joho/godotenv v1.5.1
+	github.com/tyler-smith/go-bip39 v1.1.0
+	github.com/zalando/go-keyring v0.2.8
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.42.0
 	golang.org/x/term v0.35.0
@@ -28,8 +30,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.51.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.51.0 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
-	github.com/awnumar/memcall v0.4.0 // indirect
-	github.com/awnumar/memguard v0.23.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20250501225837-2ac532fd4443 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
@@ -53,8 +53,6 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
-	github.com/zalando/go-keyring v0.2.8 // indirect
 	github.com/zeebo/errs v1.4.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.35.0 // indirect
