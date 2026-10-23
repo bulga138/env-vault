@@ -1,4 +1,4 @@
-# TODO: Fix checksum verification
+# Checksum verification implemented.
 # This script automatically downloads, installs, or updates the Bitwarden Secrets Manager CLI (bws).
 # It is a full-featured, enterprise-grade tool that handles security validation, rollbacks, and advanced automation.
 
@@ -56,24 +56,6 @@ param(
     [switch]$AllowDestructiveCleanup
 )
 
-function Test-Checksum {
-    param($zipPath)
-    Write-Host "Validating checksum..."
-
-    $checksumUrl = "https://github.com/bitwarden/sdk-sm/releases/download/bws-v$bwsVersion/bws-sha256-checksums-$bwsVersion.txt"
-    $checksumFile = Join-Path $env:TEMP "bws-checksums.txt"
-    Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
-
-    $expectedChecksum = (Get-Content $checksumFile | Where-Object { $_ -match "bws-$arch-pc-windows-msvc-$bwsVersion.zip" }).Split(" ")[0]
-    $actualChecksum = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash
-
-    if ($actualChecksum -ne $expectedChecksum) {
-        throw "Checksum validation failed. Expected: $expectedChecksum, Actual: $actualChecksum"
-    }
-    else {
-        Write-Host "Checksum validation successful."
-    }
-}
 
 # -----------------------------------------------------------------
 # Logging
@@ -244,26 +226,22 @@ try {
         Write-Host "   - Downloading to temporary file: $tempFile"
         Invoke-WebRequest -Uri $downloadAsset.browser_download_url -OutFile $tempFile @webParams
 
-        # # ----- Checksum verification -----
-        # Write-Host "   - Verifying file integrity (Checksum)…"
-        # $checksumContent = Invoke-RestMethod -Uri $checksumAsset.browser_download_url @webParams 
-        # $checksumLines = $checksumContent -split "`n"
+        # ----- Checksum verification -----
+        $bwsVersion = $latestRelease.tag_name -replace '^bws-v', ''
+        $checksumUrl = "https://github.com/bitwarden/sdk-sm/releases/download/$($latestRelease.tag_name)/bws-sha256-checksums-$bwsVersion.txt"
+        Write-Host "   - Verifying file integrity (Checksum)..."
+        $checksumContent = Invoke-RestMethod -Uri $checksumUrl @webParams
+        $matchingLine = ($checksumContent -split "`n") | Where-Object { $_ -match [regex]::Escape($downloadAsset.name) } | Select-Object -First 1
+        if (-not $matchingLine) {
+            throw "Could not find a checksum line matching '$($downloadAsset.name)' in the checksum file."
+        }
+        $expectedHash = ($matchingLine -split '\s+', 2)[0].Trim().ToUpper()
+        $actualHash = (Get-FileHash -Path $tempFile -Algorithm SHA256).Hash.ToUpper()
+        if ($expectedHash -ne $actualHash) {
+            throw "Checksum mismatch! Expected '$expectedHash' but got '$actualHash'."
+        }
+        Write-Host "   - Checksum valid." -ForegroundColor Green
 
-        # # Match the specific asset name in the checksum file
-        # $matchingLine = $checksumLines | Where-Object { $_ -match [regex]::Escape($assetName) }
-
-        # if (-not $matchingLine) {
-        #     throw "Could not find a checksum line matching '$assetName' in the checksum file."
-        # }
-
-        # # Split on whitespace and get the first part (the hash)
-        # $expectedHash = ($matchingLine -split '\s+', 2)[0].Trim().ToUpper()
-        # $actualHash = (Get-FileHash -Path $tempFile -Algorithm SHA256).Hash.ToUpper()
-
-        # if ($expectedHash -ne $actualHash) {
-        #     throw "Checksum mismatch! Expected '$expectedHash' but got '$actualHash'."
-        # }
-        # Write-Host "   - Checksum valid." -ForegroundColor Green
 
         # ----- Digital‑signature verification -----
         # Write-Host "   - Verifying file authenticity (Digital Signature)…"
