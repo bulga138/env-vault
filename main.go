@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/awnumar/memguard"
 	"github.com/bulga138/env-vault/providers"
 	"github.com/bulga138/env-vault/utils"
 	"github.com/joho/godotenv"
@@ -80,6 +81,7 @@ func logAudit(action, repoName string, success bool, errorMsg string) {
 
 func main() {
 	utils.InitLogging()
+	memguard.CatchInterrupt()
 
 	configPath := os.Getenv("ENV_VAULT_CONFIG_PATH")
 	if configPath != "" {
@@ -202,6 +204,12 @@ func handleSave() {
 		return
 	}
 
+	var lockedPw *memguard.LockedBuffer
+	if password != nil {
+		lockedPw, password = lockPassword(password)
+		defer lockedPw.Destroy()
+	}
+
 	if passwordGenerated {
 		utils.Info("Do you wanna save this new password in BitWarden Secrets Manager? (y/n): ")
 		var response string
@@ -302,6 +310,12 @@ func handleGet() {
 	if passErr != nil {
 		utils.Fatal("Error reading password: %v", passErr)
 		return
+	}
+
+	var lockedPw *memguard.LockedBuffer
+	if password != nil {
+		lockedPw, password = lockPassword(password)
+		defer lockedPw.Destroy()
 	}
 
 	content, err := getEnv(repoName, password)
@@ -408,6 +422,12 @@ func handleRotatePassword() {
 		return
 	}
 
+	var lockedOld *memguard.LockedBuffer
+	if oldPassword != nil {
+		lockedOld, oldPassword = lockPassword(oldPassword)
+		defer lockedOld.Destroy()
+	}
+
 	plaintext, err := getEnv(repoName, oldPassword)
 	if err != nil {
 		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Decryption failed: %v", err))
@@ -461,6 +481,12 @@ func handleRotatePassword() {
 		utils.Info("✅ Master password updated in %s.", secretProvider.Name())
 	}
 
+	var lockedNew *memguard.LockedBuffer
+	if newPassword != nil {
+		lockedNew, newPassword = lockPassword(newPassword)
+		defer lockedNew.Destroy()
+	}
+
 	if err := saveEnv(repoName, plaintext, newPassword); err != nil {
 		logAudit("rotate-pass", repoName, false, fmt.Sprintf("Failed to re-encrypt: %v", err))
 		utils.Fatal("Failed to re-encrypt with new password: %v", err)
@@ -471,7 +497,6 @@ func handleRotatePassword() {
 		_ = keyringSet(hashedRepoName, newPassword)
 	}
 	secureZero(plaintext)
-	secureZero(newPassword)
 
 	logAudit("rotate-pass", repoName, true, "")
 	utils.Success("✅ Master password rotated successfully for '%s'!", repoName)
