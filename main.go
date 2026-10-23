@@ -814,7 +814,14 @@ func handleDoctor() {
 			utils.Success("Config file: %s", configPath)
 		}
 	} else {
-		utils.Warn("ENV_VAULT_CONFIG_PATH not set (run 'env-vault init')")
+		configDir, _ := os.UserConfigDir()
+		defaultConfig := filepath.Join(configDir, "env-vault", "env-vault.env")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			utils.Warn("ENV_VAULT_CONFIG_PATH not set; config file exists at: %s", defaultConfig)
+			utils.Info("Load it in this shell: $env:ENV_VAULT_CONFIG_PATH=\"%s\"", defaultConfig)
+		} else {
+			utils.Warn("ENV_VAULT_CONFIG_PATH not set (run 'env-vault init')")
+		}
 	}
 	configDir, _ := os.UserConfigDir()
 	vaultPath := filepath.Join(configDir, "env-vault", "vault.json")
